@@ -4,6 +4,11 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 class WorkflowTests(unittest.TestCase):
+    def test_native_build_tool_uses_the_source_archive_backend_pin(self):
+        workflow = (ROOT / '.github/workflows/ci.yml').read_text()
+        self.assertIn('maturin-version: ${{ steps.backend.outputs.version }}', workflow)
+        self.assertIn("['build-system']['requires']", workflow)
+
     def test_one_pipeline_binds_all_jobs_to_the_tested_revision(self):
         workflow = (ROOT / '.github/workflows/ci.yml').read_text()
         self.assertIn("version: ${{ steps.manifest.outputs.version }}", workflow)

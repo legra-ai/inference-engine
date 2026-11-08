@@ -141,11 +141,23 @@ jobs:
         run: |
           mkdir source-build || exit 1
           tar -xzf source-dist/*.tar.gz --strip-components=1 -C source-build || exit 1
+      - name: Read the pinned Python build backend
+        id: backend
+        run: |
+          python3 - <<'PYTHON'
+          import os, re, tomllib
+          from pathlib import Path
+          requires = tomllib.loads(Path('pyproject.toml').read_text())['build-system']['requires']
+          if len(requires) != 1 or not re.fullmatch(r'maturin==[0-9]+\.[0-9]+\.[0-9]+', requires[0]):
+              raise ValueError('Expected one exact maturin build-backend pin')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('version=' + requires[0].split('==', 1)[1] + '\n')
+          PYTHON
       - name: Build manylinux wheel from source distribution
         if: runner.os == 'Linux'
         uses: PyO3/maturin-action@v1
         with:
-          maturin-version: '1.15.0'
+          maturin-version: ${{ steps.backend.outputs.version }}
           target: ${{ matrix.target }}
           manylinux: '2_28'
           working-directory: source-build
