@@ -1,0 +1,31 @@
+[build-system]
+requires = ["maturin==1.15.0"]
+build-backend = "maturin"
+
+[project]
+name = "inference-engine"
+dynamic = ["version"]
+description = "Native Rust inference foundation with checked RDF rule-profile compilation"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT OR Apache-2.0"
+license-files = ["LICENSE-APACHE", "LICENSE-MIT"]
+authors = [{name = "Legra, Delaware, USA, trading as Legra"}]
+classifiers = ["Development Status :: 3 - Alpha", "Programming Language :: Rust", "Programming Language :: Python :: 3"]
+
+[project.urls]
+Repository = "https://github.com/legra-ai/inference-engine"
+Issues = "https://github.com/legra-ai/inference-engine/issues"
+
+[tool.maturin]
+manifest-path = "bindings/python/Cargo.toml"
+python-source = "python"
+module-name = "inference_engine._native"
+features = ["pyo3/extension-module"]
+include = [
+  {path = "tests/**/*", format = "sdist"},
+  {path = "scripts/**/*", format = "sdist"},
+  {path = "Cargo.lock", format = "sdist"},
+  {path = "rust-toolchain.toml", format = "sdist"},
+]
+exclude = ["**/target/**/*", "**/__pycache__/**/*", ".cargo/**/*", "build.rs"]

@@ -1,0 +1,49 @@
+[workspace]
+members = ["bindings/python", "bindings/node"]
+default-members = ["."]
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0-alpha.1"
+edition = "2024"
+rust-version = "1.99.1"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/legra-ai/inference-engine"
+
+[package]
+name = "inference-engine"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Native Rust inference foundation with checked RDF rule-profile compilation"
+authors = ["Jacobus Geluk <jacobus.geluk@dataroad.com>"]
+readme = "README.md"
+documentation = "https://docs.rs/inference-engine"
+keywords = ["rdf", "rdfs", "owl", "datalog", "reasoning"]
+categories = ["science", "data-structures"]
+build = "build.rs"
+include = ["Cargo.toml", "Cargo.lock", "README.md", "LICENSE-APACHE", "LICENSE-MIT", "src/**/*.rs", "tests/*.rs"]
+
+[dependencies]
+datalog-structural-model = "=3.0.0"
+rdf-reasoning = "=2.6.0"
+serde = { version = "1", features = ["derive"] }
+
+[build-dependencies]
+rhusky = "=2.0.6"
+
+[dev-dependencies]
+serde_json = "1"
+postcard = { version = "1", features = ["alloc"] }
+
+[package.metadata.version-info]
+pre_bump_hooks = ["python3 scripts/sync-version.py {{version}}"]
+additional_files = ["package.json", "package-lock.json"]
+
+[lints.rust]
+missing_docs = "deny"
+
+[lints.clippy]
+all = "deny"

@@ -1,0 +1,11 @@
+/target/
+/dist/
+/node_modules/
+/.venv/
+/pending-packages/
+/release-packages/
+/release-packages.zip
+*.node
+*.tgz
+__pycache__/
+CHANGELOG.md
