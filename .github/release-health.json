@@ -1,0 +1,16 @@
+{
+  "repositories": [
+    {
+      "repository": "legra-ai/inference-engine",
+      "workflow": "ci.yml",
+      "assignee": "jgeluk",
+      "registries": {
+        "crates": "inference-engine",
+        "pypi": "inference-engine",
+        "npm": "inference-engine"
+      },
+      "cli_assets": [],
+      "recovery_asset": "release-packages.zip"
+    }
+  ]
+}
