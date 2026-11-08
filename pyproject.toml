@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT OR Apache-2.0"
 license-files = ["LICENSE-APACHE", "LICENSE-MIT"]
-authors = [{name = "Legra, Delaware, USA, trading as Legra"}]
+authors = [{name = "DataRoad Inc, Delaware, USA, trading as Legra"}]
 classifiers = ["Development Status :: 3 - Alpha", "Programming Language :: Rust", "Programming Language :: Python :: 3"]
 
 [project.urls]

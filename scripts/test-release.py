@@ -4,6 +4,7 @@ import importlib.util
 import json
 from pathlib import Path
 import tempfile
+import tomllib
 import unittest
 from unittest.mock import patch
 
@@ -15,6 +16,11 @@ def load(name):
     return module
 
 class ReleaseTests(unittest.TestCase):
+    def test_python_metadata_names_legal_owner(self):
+        metadata = tomllib.loads((ROOT / "pyproject.toml").read_text())
+        self.assertEqual(metadata["project"]["authors"],
+                         [{"name": "DataRoad Inc, Delaware, USA, trading as Legra"}])
+
     def test_alpha_versions_have_one_identity_across_registries(self):
         release = load('release-version')
         self.assertEqual(release.python_version('0.1.0-alpha.12'), '0.1.0a12')
