@@ -75,4 +75,5 @@ Local Rust profile regressions, local native binding tests and packaged archive
 checks are useful evidence, but are not proof of publication. Record live CI,
 registry source/archive identity and completed GitHub prerelease before declaring
 the first three-registry alpha published. Shared prerelease verification support
-is tracked in legra-ai/github-actions PR 103.
+merged in legra-ai/github-actions PR 103 at
+`436340e7d6c2b6d71921145415690b2518f1901d`; workflows pin that approved revision.
