@@ -26,6 +26,7 @@ include = [
   {path = "tests/**/*", format = "sdist"},
   {path = "scripts/**/*", format = "sdist"},
   {path = "Cargo.lock", format = "sdist"},
+  {path = "build.rs", format = "sdist"},
   {path = "rust-toolchain.toml", format = "sdist"},
 ]
-exclude = ["**/target/**/*", "**/__pycache__/**/*", ".cargo/**/*", "build.rs"]
+exclude = ["**/target/**/*", "**/__pycache__/**/*", ".cargo/**/*"]
