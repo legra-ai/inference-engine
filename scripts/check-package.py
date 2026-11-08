@@ -1,6 +1,8 @@
 """Verify distributable content and alpha metadata before registry publication."""
 from pathlib import Path
 import sys
+import subprocess
+import tempfile
 import tarfile
 import zipfile
 
@@ -23,6 +25,16 @@ def check(path):
             raise ValueError('Source distribution omits Rust implementation')
         if not any(name.endswith('/build.rs') for name in names):
             raise ValueError('Source distribution omits required Cargo build script')
+        with tempfile.TemporaryDirectory(prefix='inference-sdist-contract-') as directory:
+            with tarfile.open(path) as archive:
+                archive.extractall(directory, filter='data')
+            roots = list(Path(directory).iterdir())
+            if len(roots) != 1:
+                raise ValueError('Expected one source archive root')
+            subprocess.run(['cargo', 'metadata', '--locked', '--format-version', '1',
+                            '--manifest-path', 'bindings/python/Cargo.toml',
+                            '--features', 'pyo3/extension-module'], cwd=roots[0],
+                           stdout=subprocess.DEVNULL, check=True)
     for license_name in ['LICENSE-MIT', 'LICENSE-APACHE']:
         if not any(name.endswith('/' + license_name) for name in names):
             raise ValueError(f'Missing {license_name}')

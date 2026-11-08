@@ -18,6 +18,7 @@ Repository = "https://github.com/legra-ai/inference-engine"
 Issues = "https://github.com/legra-ai/inference-engine/issues"
 
 [tool.maturin]
+sdist-generator = "git"
 manifest-path = "bindings/python/Cargo.toml"
 python-source = "python"
 module-name = "inference_engine._native"
