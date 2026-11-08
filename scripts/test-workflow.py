@@ -6,6 +6,7 @@ ROOT = Path(__file__).resolve().parents[1]
 class WorkflowTests(unittest.TestCase):
     def test_one_pipeline_binds_all_jobs_to_the_tested_revision(self):
         workflow = (ROOT / '.github/workflows/ci.yml').read_text()
+        self.assertIn("version: ${{ steps.manifest.outputs.version }}", workflow)
         self.assertIn("needs: [prepare, verify, sdist, native]", workflow)
         self.assertIn("needs: [prepare, test]", workflow)
         self.assertIn("needs.prepare.outputs.revision", workflow)

@@ -18,7 +18,7 @@ jobs:
   prepare:
     runs-on: ubuntu-24.04
     outputs:
-      version: ${{ steps.release.outputs.version }}
+      version: ${{ steps.manifest.outputs.version }}
       revision: ${{ steps.release.outputs.revision }}
       release: ${{ steps.release.outputs.release }}
     steps:
@@ -37,8 +37,20 @@ jobs:
         id: release
         with:
           token: ${{ steps.writer.outputs.token || github.token }}
-      - name: Require explicit alpha identity
-        run: python3 scripts/release-version.py
+      - name: Read version from the exact prepared source, including PR builds
+        id: manifest
+        env:
+          RELEASE_REVISION: ${{ steps.release.outputs.revision }}
+        run: |
+          git fetch origin "$RELEASE_REVISION" || exit 1
+          python3 - <<'PYTHON'
+          import os, runpy, subprocess, tomllib
+          raw = subprocess.check_output(['git', 'show', os.environ['RELEASE_REVISION'] + ':Cargo.toml'], text=True)
+          version = tomllib.loads(raw)['workspace']['package']['version']
+          runpy.run_path('scripts/release-version.py')['python_version'](version)
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('version=' + version + '\n')
+          PYTHON
 
   verify:
     needs: prepare
