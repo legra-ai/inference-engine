@@ -121,7 +121,7 @@ impl Reasoner {
     async fn next<S: ReasoningStore, C: TripleCursor<Term = S::Term, Error = S::Error>>(
         &self,
         cursor: &mut C,
-        store: &S,
+        store: &mut S,
         report: &mut RunReport,
     ) -> Result<Option<[S::Term; 3]>, ReasoningError<S::Error>> {
         Self::check_cancelled(store)?;
