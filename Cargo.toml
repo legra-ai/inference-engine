@@ -37,6 +37,7 @@ rhusky = "=2.0.6"
 [dev-dependencies]
 serde_json = "1"
 postcard = { version = "1", features = ["alloc"] }
+tokio = { version = "1.54.1", features = ["macros", "rt"] }
 
 [package.metadata.version-info]
 pre_bump_hooks = ["python3 scripts/sync-version.py {{version}}"]
