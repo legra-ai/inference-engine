@@ -29,8 +29,8 @@ impl Reasoner {
 
     /// Derive into caller-owned scratch until a fixpoint, retaining bounded state.
     ///
-    /// Memory is two compiled clauses, six variable bindings and two input tuples
-    /// per active join. Each round reads an immutable view; inserted tuples become
+    /// Memory is two compiled clauses, fixed-size bindings and two active cursors
+    /// per join. Each round reads an immutable view; inserted tuples become
     /// join inputs next round. Stores must implement indexed probes and disk spill.
     ///
     /// # Errors

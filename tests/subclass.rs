@@ -13,17 +13,21 @@ const TYPE: u64 = 1;
 const SUBCLASS: u64 = 2;
 type Triple = [u64; 3];
 
-struct Cursor(std::vec::IntoIter<Triple>);
+struct Cursor(std::vec::IntoIter<Triple>, bool);
 
 impl TripleCursor for Cursor {
     type Term = u64;
     type Error = io::Error;
     async fn next(&mut self) -> io::Result<Option<Triple>> {
-        Ok(self.0.next())
+        let next = self.0.next();
+        if next.is_none() && self.1 {
+            return Err(io::Error::other("cursor failed after rows"));
+        }
+        Ok(next)
     }
 }
 
-struct Snapshot(BTreeSet<Triple>);
+struct Snapshot(BTreeSet<Triple>, bool);
 
 impl TripleSource for Snapshot {
     type Term = u64;
@@ -43,6 +47,7 @@ impl TripleSource for Snapshot {
                 .copied()
                 .collect::<Vec<_>>()
                 .into_iter(),
+            self.1,
         ))
     }
 }
@@ -55,6 +60,8 @@ struct Store {
     cancelled: bool,
     fail_read: bool,
     fail_write: bool,
+    fail_cursor: bool,
+    fail_after_writes: Option<usize>,
 }
 
 impl Store {
@@ -85,13 +92,14 @@ impl ReasoningStore for Store {
         // bounded: these test fixtures contain fewer than thirty triples.
         Ok(Snapshot(
             self.asserted.union(&self.inferred).copied().collect(),
+            self.fail_cursor,
         ))
     }
     async fn contains(&mut self, triple: &Triple) -> io::Result<bool> {
         Ok(self.asserted.contains(triple) || self.inferred.contains(triple))
     }
     async fn insert_inferred(&mut self, inference: Inference<u64>) -> io::Result<bool> {
-        if self.fail_write {
+        if self.fail_write || self.fail_after_writes == Some(self.evidence.len()) {
             return Err(io::Error::other("write failed"));
         }
         if self.asserted.contains(&inference.triple) {
@@ -155,10 +163,58 @@ async fn cycles_terminate_and_assertions_win_duplicates() {
 }
 
 #[tokio::test]
-async fn never_reverses_subclass_or_reads_an_unselected_graph() {
+async fn never_reverses_subclass_membership() {
     let mut store = Store::new([[10, SUBCLASS, 11], [20, TYPE, 11]]);
     reasoner().run(&mut store).await.unwrap();
     assert!(store.inferred.is_empty());
+}
+
+#[tokio::test]
+async fn late_cursor_and_write_failures_leave_only_unpublished_staging() {
+    let mut store = Store::new([[10, SUBCLASS, 11], [20, TYPE, 10]]);
+    store.fail_cursor = true;
+    let error = reasoner().run(&mut store).await.unwrap_err();
+    assert!(error.to_string().contains("cursor failed"));
+    assert_eq!(store.inferred.len(), 1);
+
+    let mut store = Store::new([[10, SUBCLASS, 11], [11, SUBCLASS, 12], [20, TYPE, 10]]);
+    store.fail_after_writes = Some(1);
+    let error = reasoner().run(&mut store).await.unwrap_err();
+    assert!(error.to_string().contains("write failed"));
+    assert_eq!(store.inferred.len(), 1);
+}
+
+#[tokio::test]
+async fn exact_output_limit_can_still_prove_fixpoint_and_empty_input_is_valid() {
+    let mut store = Store::new([[10, SUBCLASS, 11], [11, SUBCLASS, 12], [20, TYPE, 10]]);
+    let report = Reasoner::new(ExecutionProfile::RdfsSubclass, limits(3, 20, 10_000))
+        .run(&mut store)
+        .await
+        .unwrap();
+    assert_eq!(report.inferred, 3);
+    let report = reasoner().run(&mut Store::default()).await.unwrap();
+    assert_eq!((report.rounds, report.inferred), (1, 0));
+}
+
+#[test]
+fn portable_execution_values_round_trip_without_a_json_intermediate() {
+    let evidence = Inference {
+        triple: [10, SUBCLASS, 12],
+        rule: rdf_reasoning::RuleId::Rdfs11,
+        premises: [[10, SUBCLASS, 11], [11, SUBCLASS, 12]],
+    };
+    let json = serde_json::to_vec(&evidence).unwrap();
+    assert_eq!(
+        serde_json::from_slice::<Inference<u64>>(&json).unwrap(),
+        evidence
+    );
+    let binary = postcard::to_allocvec(&evidence).unwrap();
+    assert_eq!(
+        postcard::from_bytes::<Inference<u64>>(&binary).unwrap(),
+        evidence
+    );
+    assert!(serde_json::from_str::<RunLimits>(r#"{"rounds":0,"inferred":1,"matches":1}"#).is_err());
+    assert!(postcard::from_bytes::<RunLimits>(&[0, 1, 1]).is_err());
 }
 
 #[tokio::test]
