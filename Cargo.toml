@@ -24,7 +24,7 @@ documentation = "https://docs.rs/inference-engine"
 keywords = ["rdf", "rdfs", "owl", "datalog", "reasoning"]
 categories = ["science", "data-structures"]
 build = "build.rs"
-include = ["Cargo.toml", "Cargo.lock", "README.md", "LICENSE-APACHE", "LICENSE-MIT", "src/**/*.rs", "tests/*.rs"]
+include = ["Cargo.toml", "Cargo.lock", "README.md", "LICENSE-APACHE", "LICENSE-MIT", "src/**/*.rs", "tests/*.rs", "docs/rdfs-subclass.md"]
 
 [dependencies]
 datalog-structural-model = "=3.0.0"
