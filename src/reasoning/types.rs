@@ -52,6 +52,7 @@ impl Error for ProfileError {}
 
 /// Explicit finite work/output limits; reaching a limit fails the attempt.
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct RunLimits {
     pub(super) rounds: NonZeroU32,
     pub(super) inferred: NonZeroU64,
@@ -71,6 +72,7 @@ impl RunLimits {
 
 /// One novel tuple and a two-premise witness from the selected shared rule.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Inference<T> {
     /// Derived subject, predicate and object, preserving caller term identity.
     pub triple: [T; 3],

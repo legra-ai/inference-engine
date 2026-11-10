@@ -215,6 +215,13 @@ fn portable_execution_values_round_trip_without_a_json_intermediate() {
     );
     assert!(serde_json::from_str::<RunLimits>(r#"{"rounds":0,"inferred":1,"matches":1}"#).is_err());
     assert!(postcard::from_bytes::<RunLimits>(&[0, 1, 1]).is_err());
+    assert!(
+        serde_json::from_str::<RunLimits>(
+            r#"{"rounds":1,"inferred":1,"matches":1,"fallback":true}"#
+        )
+        .is_err()
+    );
+    assert!(serde_json::from_str::<Inference<u64>>(r#"{"triple":[10,2,12],"rule":"rdfs11","premises":[[10,2,11],[11,2,12]],"source":"ignored"}"#).is_err());
 }
 
 #[tokio::test]
