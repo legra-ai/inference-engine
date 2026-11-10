@@ -240,7 +240,7 @@ jobs:
           node-version: '24'
           registry-url: https://registry.npmjs.org
       - run: python3 scripts/release-version.py
-      - uses: legra-ai/github-actions/.github/actions/tag-tested-release@7161b3b0fb80eb36ff9d92faccfced2a8001fe40
+      - uses: legra-ai/github-actions/.github/actions/tag-tested-release@5b31798a4624366a3c0e3f331e41b8c55ccbfa53
         with:
           version: ${{ needs.prepare.outputs.version }}
           revision: ${{ needs.prepare.outputs.revision }}
