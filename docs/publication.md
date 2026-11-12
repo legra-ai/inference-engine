@@ -1,8 +1,10 @@
 # Alpha publication
 
-The first release provides native checked rule-profile compilation and inspection.
-It does not execute graph reasoning. Do not publish placeholders, advertise full
-standards support, or make a stable release from this alpha pipeline.
+The first release provided native checked rule-profile compilation and inspection.
+The next alpha adds the Rust `rdfs-subclass` storage-adapter executor, limited to
+shared rules `rdfs9` and `rdfs11`. Python and Node remain profile-inspection APIs.
+Do not publish placeholders, advertise full standards support, or make a stable
+release from this alpha pipeline.
 
 ## Version authority
 

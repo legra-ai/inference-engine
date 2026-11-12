@@ -260,6 +260,7 @@ dependencies = [
  "rhusky 2.0.6",
  "serde",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]
