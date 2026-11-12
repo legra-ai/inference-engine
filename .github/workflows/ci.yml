@@ -33,7 +33,7 @@ jobs:
           private-key: ${{ secrets.RELEASE_WRITER_APP_KEY }}
           owner: ${{ github.repository_owner }}
           repositories: ${{ github.event.repository.name }}
-      - uses: legra-ai/github-actions/.github/actions/prepare-cargo-release@7161b3b0fb80eb36ff9d92faccfced2a8001fe40
+      - uses: legra-ai/github-actions/.github/actions/prepare-cargo-release@3ace81c4ac6d64eb18bc1df4dd7248d8ff87b6e0
         id: release
         with:
           token: ${{ steps.writer.outputs.token || github.token }}
@@ -73,7 +73,7 @@ jobs:
       - run: cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
       - run: cargo test --locked --doc
       - run: cargo doc --locked --no-deps
-      - uses: legra-ai/github-actions/.github/actions/test-cargo-package@7161b3b0fb80eb36ff9d92faccfced2a8001fe40
+      - uses: legra-ai/github-actions/.github/actions/test-cargo-package@3ace81c4ac6d64eb18bc1df4dd7248d8ff87b6e0
 
   sdist:
     needs: prepare
@@ -240,7 +240,7 @@ jobs:
           node-version: '24'
           registry-url: https://registry.npmjs.org
       - run: python3 scripts/release-version.py
-      - uses: legra-ai/github-actions/.github/actions/tag-tested-release@5b31798a4624366a3c0e3f331e41b8c55ccbfa53
+      - uses: legra-ai/github-actions/.github/actions/tag-tested-release@3ace81c4ac6d64eb18bc1df4dd7248d8ff87b6e0
         with:
           version: ${{ needs.prepare.outputs.version }}
           revision: ${{ needs.prepare.outputs.revision }}
@@ -261,7 +261,7 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.writer.outputs.token }}
         run: python3 scripts/release-packages.py stage
-      - uses: legra-ai/github-actions/.github/actions/publish-tested-crate@5b31798a4624366a3c0e3f331e41b8c55ccbfa53
+      - uses: legra-ai/github-actions/.github/actions/publish-tested-crate@3ace81c4ac6d64eb18bc1df4dd7248d8ff87b6e0
         with:
           crate: inference-engine
           version: ${{ needs.prepare.outputs.version }}
@@ -275,7 +275,7 @@ jobs:
         env:
           NPM_ARCHIVE: ${{ steps.npm.outputs.npm_archive }}
         run: npm publish "$GITHUB_WORKSPACE/$NPM_ARCHIVE" --tag alpha --access public --provenance --ignore-scripts
-      - uses: legra-ai/github-actions/.github/actions/verify-registry-publication@7161b3b0fb80eb36ff9d92faccfced2a8001fe40
+      - uses: legra-ai/github-actions/.github/actions/verify-registry-publication@156c41f73b7331b9c70280a6b215a96c49a2d8fd
         with:
           registry: npm
           package: inference-engine
@@ -288,7 +288,7 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: pending-packages/
-      - uses: legra-ai/github-actions/.github/actions/verify-registry-publication@7161b3b0fb80eb36ff9d92faccfced2a8001fe40
+      - uses: legra-ai/github-actions/.github/actions/verify-registry-publication@156c41f73b7331b9c70280a6b215a96c49a2d8fd
         with:
           registry: pypi
           package: inference-engine
