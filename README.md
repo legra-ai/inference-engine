@@ -14,9 +14,15 @@ The first alpha compiles named `rdf-reasoning` profiles into checked portable
 Datalog programs and reports their explicit exclusions. Rust, Python and Node.js
 use the same Rust implementation and published semantic dependencies.
 
-**Graph evaluation, materialization, Oxigraph integration and SHACL inference are
-not implemented in this alpha.** A compiled rule profile is not a claim of engine
-capability, complete RDFS/OWL-RL support or consistency checking.
+Rust also provides bounded forward execution of the explicit `rdfs-subclass`
+profile: subclass transitivity (`rdfs11`) and inherited membership (`rdfs9`).
+The executor evaluates the definitions from `rdf-reasoning`; callers supply
+asynchronous database scans, indexed membership probes and scratch storage.
+See [the storage adapter contract](docs/rdfs-subclass.md).
+
+The other named profiles are **compile-only**. Full RDFS/OWL-RL, arbitrary Datalog
+execution and SHACL inference are not implemented. Python and Node currently
+expose profile inspection; executable storage adapters use the Rust API.
 
 ```rust
 let profile = inference_engine::compile_profile("rdfs-core")?;
