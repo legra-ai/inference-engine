@@ -28,11 +28,11 @@ include = ["Cargo.toml", "Cargo.lock", "README.md", "LICENSE-APACHE", "LICENSE-M
 
 [dependencies]
 datalog-structural-model = "=3.0.0"
-rdf-reasoning = "=2.6.1"
+rdf-reasoning = "=2.6.2"
 serde = { version = "1", features = ["derive"] }
 
 [build-dependencies]
-rhusky = "=2.0.6"
+rhusky = "=2.0.7"
 
 [dev-dependencies]
 serde_json = "1"
