@@ -12,7 +12,7 @@ fn compile_profile(selector: &str) -> PyResult<String> {
 
 #[pyfunction]
 fn profiles() -> Vec<&'static str> {
-    // bounded: the shared catalogue has five named presets, no graph data.
+    // bounded: the built-in profile catalogue is finite and independent of graph size.
     inference_engine::profiles().collect()
 }
 

@@ -537,9 +537,9 @@ checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
 
 [[package]]
 name = "rdf-reasoning"
-version = "2.6.4"
+version = "2.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eca2a74dde58773c8223bda6aa264ca39a51afa9e83341a018e7f21b532b1c67"
+checksum = "3911a623aa4e0164ff625a931b447ec5cad262e2d0cef66787b89dbb9476f150"
 dependencies = [
  "datalog-structural-model",
  "num-bigint",

@@ -1,4 +1,4 @@
-//! Bounded forward execution of the shared `rdfs9` and `rdfs11` clauses.
+//! Bounded forward execution of shared positive RDF/RDFS structural clauses.
 //!
 //! Callers own immutable selected input, indexed scratch storage and publication.
 //! This module never collects a graph, chooses graphs, or promotes partial output.
@@ -9,7 +9,8 @@ mod types;
 
 pub use engine::Reasoner;
 pub use types::{
-    ExecutionProfile, Inference, Limit, ProfileError, ReasoningError, RunLimits, RunReport,
+    ExecutionProfile, Inference, Limit, Premises, ProfileError, ReasoningError, RunLimits,
+    RunReport,
 };
 
 use std::{error::Error, future::Future};

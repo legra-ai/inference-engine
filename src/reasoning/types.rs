@@ -1,4 +1,4 @@
-use rdf_reasoning::RuleId;
+use rdf_reasoning::{Exclusion, Preset, RuleId};
 use serde::{Deserialize, Serialize};
 use std::{
     error::Error,
@@ -13,20 +13,34 @@ pub enum ExecutionProfile {
     /// Only subclass transitivity and inherited membership, no axioms or other rules.
     #[serde(rename = "rdfs-subclass")]
     RdfsSubclass,
+    /// Fourteen shared RDF/RDFS rules, without axioms or datatype processing.
+    #[serde(rename = "rdfs-core")]
+    RdfsCore,
 }
 
 impl ExecutionProfile {
     /// Stable profile name; this is not full RDFS support.
     pub const fn name(self) -> &'static str {
-        "rdfs-subclass"
+        self.preset().name()
     }
     /// Profile definition revision, independent of package implementation version.
     pub const fn revision(self) -> u32 {
         1
     }
-    /// Exact rule identities from `rdf-reasoning` 2.6.0, in execution order.
-    pub const fn rules(self) -> &'static [RuleId; 2] {
-        &[RuleId::Rdfs9, RuleId::Rdfs11]
+    /// Shared semantic selection, independent of this executor's implementation.
+    pub const fn preset(self) -> Preset {
+        match self {
+            Self::RdfsSubclass => Preset::RdfsSubclass,
+            Self::RdfsCore => Preset::RdfsCore,
+        }
+    }
+    /// Exact rule identities from the shared catalogue, in execution order.
+    pub const fn rules(self) -> &'static [RuleId] {
+        self.preset().rules()
+    }
+    /// Obligations deliberately excluded by the shared semantic selection.
+    pub const fn exclusions(self) -> &'static [Exclusion] {
+        self.preset().exclusions()
     }
 }
 
@@ -35,6 +49,7 @@ impl FromStr for ExecutionProfile {
     fn from_str(value: &str) -> Result<Self, Self::Err> {
         match value {
             "rdfs-subclass" => Ok(Self::RdfsSubclass),
+            "rdfs-core" => Ok(Self::RdfsCore),
             _ => Err(ProfileError(value.to_owned())),
         }
     }
@@ -70,7 +85,30 @@ impl RunLimits {
     }
 }
 
-/// One novel tuple and a two-premise witness from the selected shared rule.
+/// Exact bounded witness arity, without invented or repeated premise tuples.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub enum Premises<T> {
+    /// A unary rule used one matching body tuple.
+    One([T; 3]),
+    /// A join rule used two matching body tuples in shared definition order.
+    Two([[T; 3]; 2]),
+}
+impl<T> Premises<T> {
+    /// Iterate matching body tuples in rule order, preserving exact arity.
+    pub fn iter(&self) -> std::slice::Iter<'_, [T; 3]> {
+        match self {
+            Self::One(tuple) => std::slice::from_ref(tuple).iter(),
+            Self::Two(tuples) => tuples.iter(),
+        }
+    }
+}
+impl<T> From<[[T; 3]; 2]> for Premises<T> {
+    fn from(tuples: [[T; 3]; 2]) -> Self {
+        Self::Two(tuples)
+    }
+}
+
+/// One novel tuple and an exact-arity witness from the selected shared rule.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Inference<T> {
@@ -79,7 +117,7 @@ pub struct Inference<T> {
     /// Rule that produced this witness.
     pub rule: RuleId,
     /// Matching body tuples in shared rule order; either can itself be inferred.
-    pub premises: [[T; 3]; 2],
+    pub premises: Premises<T>,
 }
 
 /// Completed work counters; returned only after successful fixpoint detection.
@@ -113,7 +151,7 @@ pub enum ReasoningError<E> {
     Cancelled,
     /// Explicit budget prevented complete closure.
     LimitExceeded(Limit),
-    /// Pinned shared rule no longer has the supported flat two-body form.
+    /// Shared rule does not have a supported flat one- or two-body form.
     UnsupportedRule(RuleId),
 }
 impl<E: fmt::Display> fmt::Display for ReasoningError<E> {

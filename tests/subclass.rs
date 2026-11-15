@@ -81,7 +81,7 @@ fn portable_execution_values_round_trip_without_a_json_intermediate() {
     let evidence = Inference {
         triple: [10, SUBCLASS, 12],
         rule: rdf_reasoning::RuleId::Rdfs11,
-        premises: [[10, SUBCLASS, 11], [11, SUBCLASS, 12]],
+        premises: [[10, SUBCLASS, 11], [11, SUBCLASS, 12]].into(),
     };
     let json = serde_json::to_vec(&evidence).unwrap();
     assert_eq!(
@@ -101,7 +101,7 @@ fn portable_execution_values_round_trip_without_a_json_intermediate() {
         )
         .is_err()
     );
-    assert!(serde_json::from_str::<Inference<u64>>(r#"{"triple":[10,2,12],"rule":"rdfs11","premises":[[10,2,11],[11,2,12]],"source":"ignored"}"#).is_err());
+    assert!(serde_json::from_str::<Inference<u64>>(r#"{"triple":[10,2,12],"rule":"rdfs11","premises":{"Two":[[10,2,11],[11,2,12]]},"source":"ignored"}"#).is_err());
 }
 
 #[tokio::test]
@@ -155,7 +155,7 @@ fn unsupported_profiles_are_not_silently_weakened() {
         "rdfs-subclass".parse::<ExecutionProfile>().unwrap(),
         ExecutionProfile::RdfsSubclass
     );
-    for name in ["rdfs-core", "rdfs", "owl2-rl", "isSubclassOf"] {
+    for name in ["rdfs", "owl2-rl", "isSubclassOf"] {
         assert!(name.parse::<ExecutionProfile>().is_err());
     }
     assert_eq!(

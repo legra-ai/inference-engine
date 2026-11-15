@@ -13,7 +13,20 @@ pub(super) struct Pattern<T>([Slot<T>; 3]);
 pub(super) struct Clause<T> {
     pub id: RuleId,
     pub head: Pattern<T>,
-    pub body: [Pattern<T>; 2],
+    pub body: Body<T>,
+}
+
+pub(super) enum Body<T> {
+    One(Pattern<T>),
+    Two([Pattern<T>; 2]),
+}
+impl<T> Body<T> {
+    pub fn first(&self) -> &Pattern<T> {
+        match self {
+            Self::One(first) => first,
+            Self::Two([first, _]) => first,
+        }
+    }
 }
 
 impl<T: Clone + Eq> Pattern<T> {
@@ -58,19 +71,20 @@ impl<T: Clone + Eq + Send + Sync> Clause<T> {
         store: &mut S,
     ) -> Result<Self, ReasoningError<S::Error>> {
         let rule = id.definition();
-        let [Literal::Positive(first), Literal::Positive(second)] = rule.body.as_slice() else {
-            return Err(ReasoningError::UnsupportedRule(id));
-        };
         // bounded: two three-term body atoms bind at most six variables.
         let mut variables = Vec::with_capacity(VARIABLES);
-        let first = Self::pattern(first, id, &mut variables, store).await?;
-        let second = Self::pattern(second, id, &mut variables, store).await?;
+        let body = match rule.body.as_slice() {
+            [Literal::Positive(first)] => {
+                Body::One(Self::pattern(first, id, &mut variables, store).await?)
+            }
+            [Literal::Positive(first), Literal::Positive(second)] => Body::Two([
+                Self::pattern(first, id, &mut variables, store).await?,
+                Self::pattern(second, id, &mut variables, store).await?,
+            ]),
+            _ => return Err(ReasoningError::UnsupportedRule(id)),
+        };
         let head = Self::pattern(&rule.head, id, &mut variables, store).await?;
-        Ok(Self {
-            id,
-            head,
-            body: [first, second],
-        })
+        Ok(Self { id, head, body })
     }
 
     async fn pattern<S: ReasoningStore<Term = T>>(
