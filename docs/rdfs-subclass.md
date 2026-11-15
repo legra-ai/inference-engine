@@ -1,4 +1,4 @@
-# Executable subclass profile
+# Executable RDF/RDFS structural profiles
 
 `reasoning::ExecutionProfile::RdfsSubclass` selects exactly `rdfs9` and `rdfs11`
 from the pinned `rdf-reasoning` catalogue. Its selector is `rdfs-subclass`,
@@ -27,8 +27,37 @@ not copied into inferred output, even when a rule can also prove them.
 This profile excludes **every other rule**, axiomatic triples, datatype
 reasoning, subproperty/domain/range reasoning, OWL reasoning, contradiction
 detection and SHACL. It does not claim complete RDFS entailment. Existing
-`compile_profile("rdfs-core")` remains compilation only; the executor rejects
-`rdfs-core`, `rdfs`, `owl2-rl` and unknown selectors instead of weakening them.
+`ExecutionProfile::RdfsCore` additionally executes all fourteen shared flat
+RDF/RDFS clauses, including subproperty inheritance, domain and range. Its exact
+rule selection and exclusions come from `rdf-reasoning::Preset::RdfsCore`.
+Neither structural selection includes axioms or full datatype/triple-term
+semantics. The executor rejects `rdfs`, `owl2-rl` and unknown selectors instead
+of weakening them.
+
+## Explicit RDF 1.2 axioms
+
+`Rdf12AxiomSeeder` stages shared standard ground facts into the same fresh
+attempt before structural execution. `seed_family` takes `Rdf12AxiomId::Rdf`
+(nine facts), `Rdfs` (forty-one) or `DefaultDatatypes` (three). The last family
+declares `xsd:string`, `rdf:langString` and `rdf:dirLangString` as datatypes; it
+does not validate literal payloads or establish consistency.
+
+`seed_container` takes a checked `Rdf12ContainerProperty`, supplied one IRI at a
+time, and stages its four RDF/RDFS axioms. Canonical positive indices can exceed
+machine-integer ranges. The caller selects relevant vocabulary from source and
+target, including `_1` when required by the standard's entailment procedure.
+The seeder never enumerates the infinite container vocabulary.
+
+The seeder's explicit novel-output cap applies cumulatively across all its
+calls. Duplicates consume no output budget. Structural execution has a separate
+cap: the adapter must also enforce total attempt-wide storage and work limits.
+Any seeding error invalidates the entire attempt, including earlier staged facts.
+
+This API executes finite axiom definitions from RDF 1.2 Semantics CRD
+2026-09-24. Full source-to-target RDFS 1.2 entailment additionally requires
+datatype validation and consistency, recursive term/proposition semantics, and
+existential matching. Finite seeding plus fourteen rules is not a conformance
+claim.
 
 ## Rust use
 
@@ -80,8 +109,11 @@ signatures live in `src/reasoning/mod.rs`; the public regression fixture
 - `contains` probes the **current** asserted-plus-staged union, including facts
   inserted since the round snapshot. `insert_inferred` deduplicates atomically,
   gives assertions precedence, and returns true only for a novel inferred fact.
-- `Inference<T>` includes the shared `RuleId` and both matching premise tuples.
-  A premise can itself be inferred. This is a first witness, not every proof.
+- `Inference<T>` includes typed `Evidence`. A `Rule` witness contains the shared
+  `RuleId` and `Premises::One` or `Premises::Two` in definition order. An `Axiom`
+  witness records its exact standard family; its ground inference tuple completes
+  the identity. Axioms have no invented premise or rule identifier.
+  A rule premise can itself be inferred. This is a first witness, not every proof.
   Scan order can change that witness; exact inferred set closure is independent
   of order. Do not treat the witness as a canonical provenance hash.
 - Keep graph-sized scratch relations and deduplication indexes in disk-backed
@@ -107,6 +139,9 @@ The caller owns promotion. Record selected input snapshot/graph identities,
 `implementation_version()`, `rule_catalogue()` and configured limits. Check that
 the selected input is still current, then atomically promote the owned inference
 contribution. A success report alone is not a currentness or publication guard.
+For explicit axiom seeding also record selected families, container vocabulary
+selection and the seed budget. The catalogue identity is generated from the
+exact dependency pin in the packaged manifest.
 
 On asserted-input deletion/change, profile change or implementation change,
 recompute from a new asserted snapshot and atomically replace the contribution.
