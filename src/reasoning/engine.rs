@@ -25,7 +25,7 @@ impl Reasoner {
     }
     /// Pinned semantic rule catalogue identity for inference provenance.
     pub const fn rule_catalogue(&self) -> &'static str {
-        "rdf-reasoning/2.7.0"
+        env!("INFERENCE_ENGINE_RULE_CATALOGUE")
     }
 
     /// Derive into caller-owned scratch until a fixpoint, retaining bounded state.
