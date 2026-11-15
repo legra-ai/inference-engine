@@ -1,7 +1,7 @@
 //! Every selected RDFS core rule must produce its own semantic consequence.
 
 mod support;
-use inference_engine::reasoning::{ExecutionProfile, Reasoner};
+use inference_engine::reasoning::{Evidence, ExecutionProfile, Reasoner};
 use rdf_reasoning::RuleId::*;
 use rdf_reasoning::{Preset, RuleId};
 use support::{SUBCLASS, Store, TYPE, limits};
@@ -76,18 +76,16 @@ async fn executes_each_of_the_fourteen_shared_rules_with_exact_witness_arity() {
             "missing {rule:?}: {expected:?}"
         );
         assert!(
-            store
-                .evidence
-                .iter()
-                .any(|e| e.triple == expected && e.rule == rule),
+            store.evidence.iter().any(|e| e.triple == expected
+                && matches!(e.evidence, Evidence::Rule { rule: id, .. } if id == rule)),
             "missing rule witness for {rule:?}"
         );
         for evidence in &store.evidence {
-            assert_eq!(
-                evidence.premises.iter().count(),
-                evidence.rule.definition().body.len()
-            );
-            for premise in evidence.premises.iter() {
+            let Evidence::Rule { rule, premises } = &evidence.evidence else {
+                panic!("core-only execution invented an axiom");
+            };
+            assert_eq!(premises.iter().count(), rule.definition().body.len());
+            for premise in premises.iter() {
                 assert!(store.asserted.contains(premise) || store.inferred.contains(premise));
             }
         }

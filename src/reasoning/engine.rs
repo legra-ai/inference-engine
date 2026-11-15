@@ -1,6 +1,6 @@
 use super::{
-    ExecutionProfile, Inference, Limit, Premises, ReasoningError, ReasoningStore, RunLimits,
-    RunReport, TripleCursor, TripleSource,
+    Evidence, ExecutionProfile, Inference, Limit, Premises, ReasoningError, ReasoningStore,
+    RunLimits, RunReport, TripleCursor, TripleSource,
     plan::{Bindings, Body, Clause},
 };
 
@@ -130,8 +130,10 @@ impl Reasoner {
         }
         let inference = Inference {
             triple,
-            rule: clause.id,
-            premises,
+            evidence: Evidence::Rule {
+                rule: clause.id,
+                premises,
+            },
         };
         if store
             .insert_inferred(inference)

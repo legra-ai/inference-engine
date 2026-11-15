@@ -5,12 +5,14 @@
 
 mod engine;
 mod plan;
+mod seeding;
 mod types;
 
 pub use engine::Reasoner;
+pub use seeding::Rdf12AxiomSeeder;
 pub use types::{
-    ExecutionProfile, Inference, Limit, Premises, ProfileError, ReasoningError, RunLimits,
-    RunReport,
+    AxiomFamily, Evidence, ExecutionProfile, Inference, Limit, Premises, ProfileError,
+    ReasoningError, RunLimits, RunReport,
 };
 
 use std::{error::Error, future::Future};
@@ -49,7 +51,8 @@ pub trait TripleSource: Send + Sync {
 /// Backend capabilities for one fresh, isolated inference attempt.
 ///
 /// Initially expose only the caller's selected asserted snapshot, never earlier
-/// inferred output. Scratch facts must spill to caller-owned indexed storage;
+/// inferred output. Explicit axiom seeding may precede rule execution within
+/// the same fresh attempt. Scratch facts must spill to caller-owned indexed storage;
 /// no method may buffer a graph-sized relation. Each snapshot freezes the union
 /// as of its creation; subsequent insertions are visible in the next snapshot.
 ///

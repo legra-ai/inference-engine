@@ -1,7 +1,7 @@
 //! Executable two-rule RDFS contract against a bounded test-only store.
 
 mod support;
-use inference_engine::reasoning::{ExecutionProfile, Inference, Reasoner, RunLimits};
+use inference_engine::reasoning::{Evidence, ExecutionProfile, Inference, Reasoner, RunLimits};
 use std::collections::BTreeSet;
 use support::{SUBCLASS, Store, TYPE, limits};
 
@@ -20,8 +20,10 @@ async fn derives_transitive_subclasses_and_inherited_membership() {
     assert_eq!(report.inferred, 3);
     assert_eq!(store.asserted.len(), 3);
     assert!(store.evidence.iter().all(|evidence| {
-        evidence
-            .premises
+        let Evidence::Rule { premises, .. } = &evidence.evidence else {
+            return false;
+        };
+        premises
             .iter()
             .all(|p| store.asserted.contains(p) || store.inferred.contains(p))
     }));
@@ -80,8 +82,10 @@ async fn exact_output_limit_can_still_prove_fixpoint_and_empty_input_is_valid() 
 fn portable_execution_values_round_trip_without_a_json_intermediate() {
     let evidence = Inference {
         triple: [10, SUBCLASS, 12],
-        rule: rdf_reasoning::RuleId::Rdfs11,
-        premises: [[10, SUBCLASS, 11], [11, SUBCLASS, 12]].into(),
+        evidence: Evidence::Rule {
+            rule: rdf_reasoning::RuleId::Rdfs11,
+            premises: [[10, SUBCLASS, 11], [11, SUBCLASS, 12]].into(),
+        },
     };
     let json = serde_json::to_vec(&evidence).unwrap();
     assert_eq!(
@@ -101,7 +105,7 @@ fn portable_execution_values_round_trip_without_a_json_intermediate() {
         )
         .is_err()
     );
-    assert!(serde_json::from_str::<Inference<u64>>(r#"{"triple":[10,2,12],"rule":"rdfs11","premises":{"Two":[[10,2,11],[11,2,12]]},"source":"ignored"}"#).is_err());
+    assert!(serde_json::from_str::<Inference<u64>>(r#"{"triple":[10,2,12],"evidence":{"Rule":{"rule":"rdfs11","premises":{"Two":[[10,2,11],[11,2,12]]}}},"source":"ignored"}"#).is_err());
 }
 
 #[tokio::test]

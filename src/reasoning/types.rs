@@ -1,4 +1,4 @@
-use rdf_reasoning::{Exclusion, Preset, RuleId};
+use rdf_reasoning::{Exclusion, Preset, Rdf12AxiomId, RuleId};
 use serde::{Deserialize, Serialize};
 use std::{
     error::Error,
@@ -108,16 +108,38 @@ impl<T> From<[[T; 3]; 2]> for Premises<T> {
     }
 }
 
-/// One novel tuple and an exact-arity witness from the selected shared rule.
+/// Standard axiom authority; the inference tuple supplies the exact ground identity.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub enum AxiomFamily {
+    /// A finite family from RDF 1.2 Semantics CRD 2026-09-24.
+    Rdf12(Rdf12AxiomId),
+    /// A checked canonical container IRI's RDF/RDFS vocabulary axioms.
+    Rdf12Container,
+}
+
+/// Exact derivation authority, distinguishing premises from ground axioms.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub enum Evidence<T> {
+    /// A shared rule fired on these exact body tuples.
+    Rule {
+        /// Catalogue rule identity.
+        rule: RuleId,
+        /// Body tuples in shared definition order.
+        premises: Premises<T>,
+    },
+    /// A ground standard axiom has no rule premises.
+    Axiom(AxiomFamily),
+}
+
+/// One novel tuple and its exact derivation authority.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Inference<T> {
     /// Derived subject, predicate and object, preserving caller term identity.
     pub triple: [T; 3],
-    /// Rule that produced this witness.
-    pub rule: RuleId,
-    /// Matching body tuples in shared rule order; either can itself be inferred.
-    pub premises: Premises<T>,
+    /// Rule and premise witness, or explicit standard axiom family.
+    pub evidence: Evidence<T>,
 }
 
 /// Completed work counters; returned only after successful fixpoint detection.
@@ -153,6 +175,8 @@ pub enum ReasoningError<E> {
     LimitExceeded(Limit),
     /// Shared rule does not have a supported flat one- or two-body form.
     UnsupportedRule(RuleId),
+    /// A shared axiom is not an empty-body ground triple of IRI constants.
+    UnsupportedAxiom,
 }
 impl<E: fmt::Display> fmt::Display for ReasoningError<E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -171,6 +195,7 @@ impl<E: fmt::Display> fmt::Display for ReasoningError<E> {
             Self::UnsupportedRule(rule) => {
                 write!(f, "unsupported shared rule definition: {rule:?}")
             }
+            Self::UnsupportedAxiom => f.write_str("unsupported shared ground axiom definition"),
         }
     }
 }
