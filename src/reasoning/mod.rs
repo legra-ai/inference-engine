@@ -4,11 +4,13 @@
 //! This module never collects a graph, chooses graphs, or promotes partial output.
 
 mod engine;
+mod literal;
 mod plan;
 mod seeding;
 mod types;
 
 pub use engine::Reasoner;
+pub use literal::{LiteralError, LiteralReader, LiteralReport, Rdf12LiteralValidator};
 pub use seeding::Rdf12AxiomSeeder;
 pub use types::{
     AxiomFamily, Evidence, ExecutionProfile, Inference, Limit, Premises, ProfileError,
