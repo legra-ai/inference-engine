@@ -28,7 +28,7 @@ include = ["Cargo.toml", "Cargo.lock", "build.rs", "build_support.rs", "README.m
 
 [dependencies]
 datalog-structural-model = "=3.0.4"
-rdf-reasoning = "=2.13.0"
+rdf-reasoning = "=2.14.0"
 rdf-structural-model = "=0.4.0"
 serde = { version = "1", features = ["derive"] }
 

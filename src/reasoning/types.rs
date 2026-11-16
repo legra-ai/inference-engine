@@ -1,7 +1,7 @@
 use super::LiteralOccurrence;
 use rdf_reasoning::{
-    Exclusion, Preset, Rdf12AxiomId, Rdf12ExistentialAxiomId, Rdf12LiteralRuleId,
-    Rdf12PropositionRuleId, RuleId,
+    Exclusion, Preset, Rdf12AxiomId, Rdf12DatatypeConflictId, Rdf12ExistentialAxiomId,
+    Rdf12LiteralRuleId, Rdf12PropositionRuleId, RuleId,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -203,6 +203,8 @@ pub enum ReasoningError<E> {
     UnsupportedLiteralRule(Rdf12LiteralRuleId),
     /// Shared proposition constructor has an unsupported body or head shape.
     UnsupportedPropositionRule(Rdf12PropositionRuleId),
+    /// Shared datatype conflict has an unsupported diagnostic or premise shape.
+    UnsupportedDatatypeConflict(Rdf12DatatypeConflictId),
 }
 impl<E: fmt::Display> fmt::Display for ReasoningError<E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -224,6 +226,9 @@ impl<E: fmt::Display> fmt::Display for ReasoningError<E> {
             Self::UnsupportedAxiom => f.write_str("unsupported shared ground axiom definition"),
             Self::UnsupportedLiteralRule(rule) => {
                 write!(f, "unsupported shared literal rule definition: {rule:?}")
+            }
+            Self::UnsupportedDatatypeConflict(id) => {
+                write!(f, "unsupported datatype conflict definition: {id:?}")
             }
             Self::UnsupportedPropositionRule(rule) => {
                 write!(f, "unsupported proposition rule definition: {rule:?}")

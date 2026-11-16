@@ -1,7 +1,8 @@
 //! Backend stores need not be Sync to execute on a multithreaded runtime.
 
 use inference_engine::reasoning::{
-    LiteralOccurrenceCursor, Rdf12AxiomSeeder, Rdf12LiteralTyper, Rdf12PropositionConstructor,
+    DatatypeConflictSink, LiteralOccurrenceCursor, LiteralRole, Rdf12AxiomSeeder,
+    Rdf12DatatypeConflictChecker, Rdf12LiteralTyper, Rdf12PropositionConstructor,
     Rdf12TripleTermStore, Rdf12WitnessStore, Reasoner, ReasoningStore,
 };
 use rdf_reasoning::Rdf12ExistentialAxiomId;
@@ -34,4 +35,16 @@ where
 #[allow(dead_code)]
 fn witness_future_is_send<S: Rdf12WitnessStore>(seeder: &mut Rdf12AxiomSeeder, store: &mut S) {
     require_send(seeder.seed_existential(store, Rdf12ExistentialAxiomId::Rdfs14a));
+}
+
+#[allow(dead_code)]
+fn conflicts_future_is_send<S, D>(
+    checker: &Rdf12DatatypeConflictChecker,
+    store: &mut S,
+    sink: &mut D,
+) where
+    S: ReasoningStore,
+    D: DatatypeConflictSink<Term = S::Term, Error = S::Error>,
+{
+    require_send(checker.run(store, LiteralRole::Source, sink));
 }

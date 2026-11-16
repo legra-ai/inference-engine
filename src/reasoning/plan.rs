@@ -1,8 +1,8 @@
 use super::{ReasoningError, ReasoningStore};
 use datalog_structural_model::{Atom, Literal, Term, VariableSymbol};
 use rdf_reasoning::{
-    RDF12_LITERAL_DATATYPE_RELATION, Rdf12LiteralRuleId, Rdf12PropositionRuleId, RuleId,
-    TRIPLE_RELATION,
+    RDF12_LITERAL_DATATYPE_RELATION, Rdf12DatatypeConflictId, Rdf12LiteralRuleId,
+    Rdf12PropositionRuleId, RuleId, TRIPLE_RELATION,
 };
 
 const VARIABLES: usize = 6;
@@ -18,6 +18,7 @@ enum DefinitionId {
     Rdf(RuleId),
     Literal(Rdf12LiteralRuleId),
     Proposition(Rdf12PropositionRuleId),
+    Conflict(Rdf12DatatypeConflictId),
 }
 impl DefinitionId {
     fn error<E>(self) -> ReasoningError<E> {
@@ -25,6 +26,7 @@ impl DefinitionId {
             Self::Rdf(id) => ReasoningError::UnsupportedRule(id),
             Self::Literal(id) => ReasoningError::UnsupportedLiteralRule(id),
             Self::Proposition(id) => ReasoningError::UnsupportedPropositionRule(id),
+            Self::Conflict(id) => ReasoningError::UnsupportedDatatypeConflict(id),
         }
     }
 }
@@ -267,5 +269,38 @@ impl<T: Clone + Eq + Send + Sync> LiteralClause<T> {
             body,
             datatype,
         })
+    }
+}
+
+pub(super) struct ConflictClause<T> {
+    pub id: Rdf12DatatypeConflictId,
+    pub body: [Pattern<T>; 2],
+    pub head: Pattern<T, 1>,
+}
+impl<T: Clone + Eq + Send + Sync> ConflictClause<T> {
+    pub async fn compile<S: ReasoningStore<Term = T>>(
+        id: Rdf12DatatypeConflictId,
+        store: &mut S,
+    ) -> Result<Self, ReasoningError<S::Error>> {
+        let rule = id.definition();
+        let identity = DefinitionId::Conflict(id);
+        let [Literal::Positive(first), Literal::Positive(second)] = rule.body.as_slice() else {
+            return Err(identity.error());
+        };
+        // bounded: two fixed triple premises and one unary diagnostic head.
+        let mut variables = Vec::with_capacity(VARIABLES);
+        let body = [
+            Pattern::compile(first, TRIPLE_RELATION, identity, &mut variables, store).await?,
+            Pattern::compile(second, TRIPLE_RELATION, identity, &mut variables, store).await?,
+        ];
+        let head = Pattern::compile(
+            &rule.head,
+            id.witness_relation(),
+            identity,
+            &mut variables,
+            store,
+        )
+        .await?;
+        Ok(Self { id, body, head })
     }
 }

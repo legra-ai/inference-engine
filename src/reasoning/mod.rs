@@ -3,6 +3,7 @@
 //! Callers own immutable selected input, indexed scratch storage and publication.
 //! This module never collects a graph, chooses graphs, or promotes partial output.
 
+mod conflict;
 mod engine;
 mod literal;
 mod literal_typing;
@@ -11,6 +12,10 @@ mod proposition;
 mod seeding;
 mod types;
 
+pub use conflict::{
+    DatatypeConflict, DatatypeConflictError, DatatypeConflictLimits, DatatypeConflictReport,
+    DatatypeConflictSink, Rdf12DatatypeConflictChecker,
+};
 pub use engine::Reasoner;
 pub use literal::{LiteralError, LiteralReader, LiteralReport, Rdf12LiteralValidator};
 pub use literal_typing::{
