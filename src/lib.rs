@@ -4,6 +4,7 @@ use datalog_structural_model::Program;
 use rdf_reasoning::{Exclusion, Preset, PresetParseError};
 use serde::Serialize;
 
+pub mod entailment;
 pub mod reasoning;
 
 /// An exact shared RDF profile, compiled into portable checked Datalog rules.
