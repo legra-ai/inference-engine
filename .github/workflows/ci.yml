@@ -33,7 +33,7 @@ jobs:
           private-key: ${{ secrets.RELEASE_WRITER_APP_KEY }}
           owner: ${{ github.repository_owner }}
           repositories: ${{ github.event.repository.name }}
-      - uses: legra-ai/github-actions/.github/actions/prepare-cargo-release@3ace81c4ac6d64eb18bc1df4dd7248d8ff87b6e0
+      - uses: legra-ai/github-actions/.github/actions/prepare-cargo-release@4f513e763cf79e620f670ceb4430fd8adfd06c7e
         id: release
         with:
           token: ${{ steps.writer.outputs.token || github.token }}
