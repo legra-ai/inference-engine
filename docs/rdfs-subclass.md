@@ -118,6 +118,31 @@ separate from source-consistency analysis. Errors retain the literal occurrence
 and role, so an invalid target literal cannot be mistaken for an inconsistent
 source.
 
+## Finite proposition construction
+
+`Rdf12PropositionConstructor` executes the shared three-premise `Grdfs14`
+definition over exactly one immutable snapshot. It combines a property's typing
+with subject/object resource membership and interns the resulting generalized
+triple term through `Rdf12TripleTermStore`. Its contents are never asserted.
+`Evidence::Proposition` retains the exact rule and all three premise tuples in
+definition order; the caller also records this phase's scope, snapshot and origin.
+
+Three bounded cursors and fixed bindings perform the join. `PropositionLimits`
+caps examined rows and novel output, while the backend checks actual substituted
+term nesting and dictionary limits. Generalized predicates, including literals
+typed as properties by range inference, must be preserved or rejected explicitly
+as unsupported. They must not be coerced through an IRI-only constructor.
+
+The writable store need only be `Send`; the executor future remains `Send`
+without requiring the store to be `Sync`. Only the immutable snapshot supports
+shared reads.
+
+Newly constructed terms never feed the same phase. The entailment controller
+must choose adequate typing and source/target/substitution context before
+construction. This operation does not establish a complete execution schedule
+for the draft standard's postulated Appendix A procedure, and unrestricted
+recursive construction is not permitted. All errors invalidate staged output.
+
 `LiteralTypingLimits` bounds aggregate occurrences, novel output and lexical
 bytes for the whole phase. A zero remaining byte budget permits only empty
 payloads, verified by an EOF probe. Duplicates consume inspection budgets but
