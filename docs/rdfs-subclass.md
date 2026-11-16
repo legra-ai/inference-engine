@@ -130,6 +130,33 @@ exact occurrence and validated byte count. They have no fabricated RDF premise.
 This supplies literal-typing execution; graph-wide consistency and complete
 RDFS 1.2 entailment remain separate work.
 
+## Recursive occurrence traversal
+
+`Rdf12OccurrenceCursor` streams actual term appearances from an immutable selected
+root cursor using the asynchronous `EntailmentTerms` structural accessor. Every
+`TermOccurrence` retains the exact term key, original root, source/target role
+and nonempty `OccurrencePath`. Root and nested predicates are identifiable by
+position. Repeated keys retain distinct paths and roots; triple terms themselves
+and their nested components are visited without asserting the contents.
+
+The caller attaches input snapshot and logical-source-graph provenance. Literal
+metadata IRIs, language tags and direction are not traversed as actual RDF terms.
+The same dictionary scope and exact target blank key must be preserved through
+nested and outer occurrences; standardize target blanks apart from source blanks.
+
+An iterative stack retains at most the configured path depth. `OccurrenceLimits`
+bounds depth, emitted appearances and total root-read/term-lookup steps. There is
+no graph/dictionary collection or recursive call stack. Cached-ready traversal
+yields cooperatively. Term-access cache misses must reload authoritative structure
+or fail, never return `None` for an evicted triple term. Late root failures,
+unsupported term access, cancellation and exhausted limits abort the traversal
+and invalidate partial semantic output. Futures are `Send`.
+
+This is structural traversal. Binding these appearances to shared `rdfD2`/`rdfs4`
+clauses, source-only predicate typing and role-specific target augmentation are
+separate execution obligations; traversal alone does not implement those rules
+or establish a complete RDF/RDFS procedure.
+
 ## Finite proposition construction
 
 `Rdf12PropositionConstructor` executes the shared three-premise `Grdfs14`
