@@ -8,8 +8,8 @@ release from this alpha pipeline.
 
 ## Version authority
 
-Cargo workspace version `0.1.0-alpha.1` is authoritative. Rust and npm use that
-spelling; maturin derives Python's equivalent `0.1.0a1`. Python metadata declares
+The Cargo workspace version in `Cargo.toml` is authoritative. For example,
+Rust/npm `0.1.0-alpha.1` maps to Python `0.1.0a1` through maturin. Python metadata declares
 Development Status 3 (Alpha); npm publication explicitly selects `alpha`, and
 GitHub releases are prereleases. The release-version guard rejects stable,
 beta/rc and nonzero-major versions. Promotion requires a deliberate policy change.
