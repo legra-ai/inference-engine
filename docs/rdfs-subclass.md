@@ -118,6 +118,18 @@ separate from source-consistency analysis. Errors retain the literal occurrence
 and role, so an invalid target literal cannot be mistaken for an inconsistent
 source.
 
+`LiteralTypingLimits` bounds aggregate occurrences, novel output and lexical
+bytes for the whole phase. A zero remaining byte budget permits only empty
+payloads, verified by an EOF probe. Duplicates consume inspection budgets but
+not novel-output budget; asserted facts retain precedence. Cursor failures,
+including errors after prior rows, abort the entire attempt rather than reporting
+successful truncated output.
+
+Generalized conclusions retain `Evidence::Literal` with the parameterized rule,
+exact occurrence and validated byte count. They have no fabricated RDF premise.
+This supplies literal-typing execution; graph-wide consistency and complete
+RDFS 1.2 entailment remain separate work.
+
 ## Finite proposition construction
 
 `Rdf12PropositionConstructor` executes the shared three-premise `Grdfs14`
@@ -143,17 +155,34 @@ construction. This operation does not establish a complete execution schedule
 for the draft standard's postulated Appendix A procedure, and unrestricted
 recursive construction is not permitted. All errors invalidate staged output.
 
-`LiteralTypingLimits` bounds aggregate occurrences, novel output and lexical
-bytes for the whole phase. A zero remaining byte budget permits only empty
-payloads, verified by an EOF probe. Duplicates consume inspection budgets but
-not novel-output budget; asserted facts retain precedence. Cursor failures,
-including errors after prior rows, abort the entire attempt rather than reporting
-successful truncated output.
+## Source datatype conflicts
 
-Generalized conclusions retain `Evidence::Literal` with the parameterized rule,
-exact occurrence and validated byte count. They have no fabricated RDF premise.
-This supplies literal-typing execution; graph-wide consistency and complete
-RDFS 1.2 entailment remain separate work.
+`Rdf12DatatypeConflictChecker` executes the three shared positive diagnostic
+clauses for the pairwise disjoint mandatory default datatype classes. It scans
+one immutable source snapshot through two indexed cursors and writes each
+`DatatypeConflict` to a caller-owned asynchronous `DatatypeConflictSink`.
+The record retains the shared diagnostic ID, exact member key and both type
+premises. These diagnostics are separate from RDF output and do not assert
+negative membership or infer equality between different term keys.
+
+Run this phase only after source lexical validation, nonempty datatype-witness
+seeding and source closure, and before any target-context augmentation. Explicit
+`LiteralRole::TargetContext` input fails before any reads or writes. The caller
+still owns the actual source selection and must attach its immutable scope,
+snapshot, catalogue and implementation identities to the diagnostic records.
+The role guard cannot prove that the caller followed the required schedule.
+
+`DatatypeConflictLimits` caps examined rows and diagnostic output. Cancellation,
+late read failures, sink failures and exhausted limits abort the phase; discard
+all partially staged diagnostics and RDF output. Cached-ready scans yield
+cooperatively so other tasks can cancel the attempt. Futures remain `Send`
+without requiring a writable store or sink to be `Sync`.
+
+A successful zero-diagnostic report only means these three clashes were not
+found in the supplied closure. It does not certify full datatype consistency,
+RDFS consistency, unsupported datatype semantics or an integrated entailment
+procedure. Nonempty-class witnesses are necessary to expose subclass clashes
+even when the graph contains no literal instances.
 
 ## Source-to-target simple entailment
 
