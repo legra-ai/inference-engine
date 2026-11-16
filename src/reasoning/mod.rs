@@ -7,6 +7,7 @@ mod conflict;
 mod engine;
 mod literal;
 mod literal_typing;
+mod occurrence;
 mod plan;
 mod proposition;
 mod seeding;
@@ -21,6 +22,10 @@ pub use literal::{LiteralError, LiteralReader, LiteralReport, Rdf12LiteralValida
 pub use literal_typing::{
     LiteralOccurrence, LiteralOccurrenceCursor, LiteralOccurrenceRead, LiteralRole,
     LiteralTypingError, LiteralTypingLimits, LiteralTypingReport, Rdf12LiteralTyper,
+};
+pub use occurrence::{
+    OccurrenceError, OccurrenceLimits, OccurrencePath, Rdf12OccurrenceCursor, TermOccurrence,
+    TermPosition,
 };
 pub use proposition::{PropositionLimits, PropositionReport, Rdf12PropositionConstructor};
 pub use seeding::Rdf12AxiomSeeder;
