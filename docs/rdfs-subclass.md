@@ -84,6 +84,39 @@ The caller owns total attempt budgets across literals. Literal inspection is a
 prerequisite for datatype inference and consistency checking, not their complete
 implementation.
 
+## Executing literal typing
+
+`Rdf12LiteralTyper` executes the three parameterized `GrdfD1` definitions from
+`rdf-reasoning` using the same bounded pattern compiler and binder as the
+structural executor. Its `LiteralOccurrenceCursor` streams a selected literal
+key, its root triple, semantic role and an owned immutable `LiteralReader`.
+Adapters must enumerate direct and recursively appearing literals in the chosen
+context, retaining input-snapshot and logical-source-graph provenance.
+
+The typer validates metadata and streams the entire UTF-8 payload before
+binding the auxiliary metadata relation. That relation is a distinct capability:
+an RDF triple whose predicate spells its IRI cannot forge a metadata premise.
+Unknown encountered datatypes remain opaque; graph assertions declaring them
+datatypes do not extend the mandatory recognized map.
+
+Select `LiteralRole::Source` or `TargetContext` explicitly. A role mismatch
+fails before reading the payload. The caller must keep target-context seeding
+separate from source-consistency analysis. Errors retain the literal occurrence
+and role, so an invalid target literal cannot be mistaken for an inconsistent
+source.
+
+`LiteralTypingLimits` bounds aggregate occurrences, novel output and lexical
+bytes for the whole phase. A zero remaining byte budget permits only empty
+payloads, verified by an EOF probe. Duplicates consume inspection budgets but
+not novel-output budget; asserted facts retain precedence. Cursor failures,
+including errors after prior rows, abort the entire attempt rather than reporting
+successful truncated output.
+
+Generalized conclusions retain `Evidence::Literal` with the parameterized rule,
+exact occurrence and validated byte count. They have no fabricated RDF premise.
+This supplies literal-typing execution; graph-wide consistency and complete
+RDFS 1.2 entailment remain separate work.
+
 ## Source-to-target simple entailment
 
 `entailment::SimpleEntailment` checks whether an immutable source graph contains
