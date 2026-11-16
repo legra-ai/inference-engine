@@ -10,8 +10,14 @@ use inference_engine::{
 };
 use std::{
     collections::BTreeMap,
+    future::Future,
     io,
     num::{NonZeroU32, NonZeroU64},
+    sync::{
+        Arc, Mutex,
+        atomic::{AtomicBool, AtomicUsize, Ordering},
+    },
+    task::{Context, Poll, Waker},
 };
 use support::Store;
 
@@ -20,6 +26,9 @@ struct Terms {
     quoted: BTreeMap<u64, [u64; 3]>,
     missing: Option<u64>,
     cancelled: bool,
+    signal: Arc<AtomicBool>,
+    cache: Mutex<Option<(u64, [u64; 3])>>,
+    loads: AtomicUsize,
 }
 impl EntailmentTerms for Terms {
     type Term = u64;
@@ -31,10 +40,20 @@ impl EntailmentTerms for Terms {
         if self.missing == Some(*key) {
             return Err(io::Error::other("authoritative term load failed"));
         }
-        Ok(self.quoted.get(key).copied())
+        if let Some((cached, triple)) = *self.cache.lock().unwrap()
+            && cached == *key
+        {
+            return Ok(Some(triple));
+        }
+        let value = self.quoted.get(key).copied();
+        if let Some(triple) = value {
+            self.loads.fetch_add(1, Ordering::Relaxed);
+            *self.cache.lock().unwrap() = Some((*key, triple));
+        }
+        Ok(value)
     }
     fn is_cancelled(&self) -> bool {
-        self.cancelled
+        self.cancelled || self.signal.load(Ordering::Relaxed)
     }
 }
 fn limits(depth: u32, occurrences: u64, steps: u64) -> OccurrenceLimits {
@@ -214,4 +233,48 @@ async fn cancellation_and_late_root_errors_invalidate_partial_traversal() {
         cursor.next().await,
         Err(OccurrenceError::Cancelled)
     ));
+}
+
+#[tokio::test]
+async fn evicted_nested_structure_is_reloaded_instead_of_becoming_an_atomic_term() {
+    let terms = Terms {
+        quoted: BTreeMap::from([(90, [5, 6, 7]), (91, [8, 9, 10])]),
+        ..Terms::default()
+    };
+    let mut cursor = Rdf12OccurrenceCursor::new(
+        roots(&[[1, 2, 90], [3, 2, 91], [4, 2, 90]], false).await,
+        &terms,
+        LiteralRole::Source,
+        limits(2, 18, 30),
+    );
+    let mut count = 0;
+    while cursor.next().await.unwrap().is_some() {
+        count += 1;
+    }
+    assert_eq!(count, 18);
+    assert_eq!(terms.loads.load(Ordering::Relaxed), 3);
+}
+#[tokio::test]
+async fn cached_ready_traversal_yields_and_observes_cancellation() {
+    let terms = Terms::default();
+    // bounded: exactly 1000 source fixture rows, enforced by Store's 4096 cap.
+    let mut store = Store::new((10..1010).map(|member| [member, 2, 3]));
+    let roots = store
+        .snapshot()
+        .await
+        .unwrap()
+        .scan([None; 3])
+        .await
+        .unwrap();
+    let mut cursor =
+        Rdf12OccurrenceCursor::new(roots, &terms, LiteralRole::Source, limits(1, 3000, 5000));
+    let future = async {
+        while cursor.next().await?.is_some() {}
+        Ok::<(), OccurrenceError<io::Error>>(())
+    };
+    let mut future = Box::pin(future);
+    let mut context = Context::from_waker(Waker::noop());
+    assert!(matches!(future.as_mut().poll(&mut context), Poll::Pending));
+    terms.signal.store(true, Ordering::Relaxed);
+    assert!(matches!(future.await, Err(OccurrenceError::Cancelled)));
 }

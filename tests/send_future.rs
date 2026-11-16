@@ -1,9 +1,11 @@
 //! Backend stores need not be Sync to execute on a multithreaded runtime.
 
+use inference_engine::entailment::EntailmentTerms;
 use inference_engine::reasoning::{
     DatatypeConflictSink, LiteralOccurrenceCursor, LiteralRole, Rdf12AxiomSeeder,
-    Rdf12DatatypeConflictChecker, Rdf12LiteralTyper, Rdf12PropositionConstructor,
-    Rdf12TripleTermStore, Rdf12WitnessStore, Reasoner, ReasoningStore,
+    Rdf12DatatypeConflictChecker, Rdf12LiteralTyper, Rdf12OccurrenceCursor,
+    Rdf12PropositionConstructor, Rdf12TripleTermStore, Rdf12WitnessStore, Reasoner, ReasoningStore,
+    TripleCursor,
 };
 use rdf_reasoning::Rdf12ExistentialAxiomId;
 use std::future::Future;
@@ -47,4 +49,13 @@ fn conflicts_future_is_send<S, D>(
     D: DatatypeConflictSink<Term = S::Term, Error = S::Error>,
 {
     require_send(checker.run(store, LiteralRole::Source, sink));
+}
+
+#[allow(dead_code)]
+fn occurrence_future_is_send<A, C>(cursor: &mut Rdf12OccurrenceCursor<'_, A, C>)
+where
+    A: EntailmentTerms,
+    C: TripleCursor<Term = A::Term, Error = A::Error>,
+{
+    require_send(cursor.next());
 }
