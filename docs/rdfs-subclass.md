@@ -59,6 +59,31 @@ datatype validation and consistency, recursive term/proposition semantics, and
 existential matching. Finite seeding plus fourteen rules is not a conformance
 claim.
 
+## Streaming literal inspection
+
+`Rdf12LiteralValidator` checks one literal through an adapter's `LiteralReader`.
+The reader exposes borrowed `rdf-structural-model` metadata independently from
+its asynchronous lexical byte stream. Metadata is checked before the payload is
+read. The validator uses 4096-byte reads and at most three carried UTF-8 bytes,
+with an explicit per-literal byte budget and cancellation/error propagation.
+
+Recognized lexical semantics come from `rdf-reasoning::Rdf12Datatype`. The
+mandatory map contains `xsd:string`, `rdf:langString` and `rdf:dirLangString`.
+String validation uses XML 1.1 character ranges. Language and directional
+strings accept every valid UTF-8 lexical payload after their metadata passes
+structural validation. Encountered unknown datatype IRIs remain opaque.
+
+Successful reports include the exact byte count and recognized datatype, if any.
+Lexical errors preserve the shared diagnostic plus the fragment's global start
+offset. The adapter retains the original literal key and occurrence provenance;
+validation never canonicalizes its lexical form, language spelling or direction.
+Backend read failures, malformed UTF-8, unsupported metadata, cancellation and
+resource exhaustion stay distinct from recognized lexical violations.
+
+The caller owns total attempt budgets across literals. Literal inspection is a
+prerequisite for datatype inference and consistency checking, not their complete
+implementation.
+
 ## Rust use
 
 ```rust
