@@ -348,7 +348,7 @@ dependencies = [
  "postcard",
  "rdf-reasoning",
  "rdf-structural-model",
- "rhusky 2.0.8",
+ "rhusky",
  "serde",
  "serde_json",
  "sha2",
@@ -767,7 +767,7 @@ checksum = "25e398a00112d09710ef24f33be0358cddf462f265e9298420bad24eff4045f2"
 dependencies = [
  "datalog-structural-model",
  "num-bigint",
- "rhusky 2.0.8",
+ "rhusky",
  "serde",
 ]
 
@@ -804,12 +804,6 @@ dependencies = [
  "quote",
  "syn 3.0.9",
 ]
-
-[[package]]
-name = "rhusky"
-version = "0.0.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bd58f5095f1eaaee85441008005db48773976f5bb85bedd35d6cf3f04db8ec4b"
 
 [[package]]
 name = "rhusky"
