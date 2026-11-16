@@ -82,6 +82,7 @@ impl Rdf12LiteralValidator {
         let mut pending = 0;
         let mut bytes = 0_u64;
         let mut offset = 0_u64;
+        let mut read_steps = 0_u64;
         loop {
             Self::check_cancelled(reader)?;
             let remaining = self.maximum - bytes;
@@ -94,6 +95,10 @@ impl Rdf12LiteralValidator {
             if count > capacity {
                 return Err(LiteralError::ReadContract);
             }
+            // Bounded scheduling counter; aggregate byte accounting stays exact below.
+            read_steps = (read_steps + 1) % crate::cooperative::QUANTUM;
+            crate::cooperative::checkpoint(read_steps).await;
+            Self::check_cancelled(reader)?;
             if count as u64 > remaining {
                 return Err(LiteralError::ByteLimit);
             }

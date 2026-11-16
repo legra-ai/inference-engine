@@ -77,6 +77,8 @@ impl Rdf12LiteralTyper {
                 return Err(LiteralTypingError::OccurrenceLimit);
             }
             report.occurrences += 1;
+            crate::cooperative::checkpoint(report.occurrences).await;
+            Self::check_cancelled(store)?;
             let inspection = Rdf12LiteralValidator::new(self.limits.bytes - report.bytes)
                 .validate(&mut reader)
                 .await

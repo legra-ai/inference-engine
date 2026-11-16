@@ -46,7 +46,7 @@ impl SimpleEntailment {
             limits: self.limits,
             steps: 0,
         };
-        state.step(terms)?;
+        state.step(terms).await?;
         let mut cursor = target
             .scan([None, None, None])
             .await
@@ -54,7 +54,7 @@ impl SimpleEntailment {
         // bounded: reject before retaining more than limits.patterns target tuples.
         let mut patterns = Vec::new();
         loop {
-            state.step(terms)?;
+            state.step(terms).await?;
             let tuple = cursor.next().await.map_err(EntailmentError::Storage)?;
             state.cancel(terms)?;
             let Some(tuple) = tuple else {
@@ -74,14 +74,14 @@ impl SimpleEntailment {
         // bounded: one owned cursor per capped target pattern; no source relation is collected.
         let mut frames = Vec::new();
         let probe = state.probe(&patterns[0], &bindings, terms).await?;
-        state.step(terms)?;
+        state.step(terms).await?;
         frames.push(Frame {
             cursor: source.scan(probe).await.map_err(EntailmentError::Storage)?,
             checkpoint: 0,
         });
         while let Some(frame) = frames.last_mut() {
             bindings.truncate(frame.checkpoint);
-            state.step(terms)?;
+            state.step(terms).await?;
             let tuple = frame
                 .cursor
                 .next()
@@ -103,7 +103,7 @@ impl SimpleEntailment {
                 return Ok(state.report(true, patterns.len() as u32));
             }
             let probe = state.probe(&patterns[index + 1], &bindings, terms).await?;
-            state.step(terms)?;
+            state.step(terms).await?;
             frames.push(Frame {
                 cursor: source.scan(probe).await.map_err(EntailmentError::Storage)?,
                 checkpoint: bindings.len(),
@@ -129,13 +129,17 @@ impl State {
             Ok(())
         }
     }
-    fn step<A: EntailmentTerms>(&mut self, terms: &A) -> Result<(), EntailmentError<A::Error>> {
+    async fn step<A: EntailmentTerms>(
+        &mut self,
+        terms: &A,
+    ) -> Result<(), EntailmentError<A::Error>> {
         self.cancel(terms)?;
         if self.steps == self.limits.steps.get() {
             return Err(EntailmentError::StepLimit);
         }
         self.steps += 1;
-        Ok(())
+        crate::cooperative::checkpoint(self.steps).await;
+        self.cancel(terms)
     }
     async fn probe<A: EntailmentTerms>(
         &mut self,
@@ -145,7 +149,7 @@ impl State {
     ) -> Result<[Option<A::Term>; 3], EntailmentError<A::Error>> {
         let mut probe = [None, None, None];
         for (index, term) in pattern.iter().enumerate() {
-            self.step(terms)?;
+            self.step(terms).await?;
             if terms
                 .is_blank(term)
                 .await
@@ -178,7 +182,7 @@ impl State {
         let mut pending = Vec::new();
         self.push_pairs(&mut pending, pattern, tuple)?;
         while let Some((target, candidate)) = pending.pop() {
-            self.step(terms)?;
+            self.step(terms).await?;
             if terms
                 .is_blank(&target)
                 .await

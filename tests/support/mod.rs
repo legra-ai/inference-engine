@@ -9,6 +9,10 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     io,
     num::{NonZeroU32, NonZeroU64},
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
 };
 
 pub const TYPE: u64 = 1;
@@ -60,6 +64,7 @@ pub struct Store {
     pub inferred: BTreeSet<Triple>,
     pub evidence: Vec<Inference<u64>>,
     pub cancelled: bool,
+    pub cancel_signal: Option<Arc<AtomicBool>>,
     pub fail_read: bool,
     pub fail_write: bool,
     pub fail_cursor: bool,
@@ -138,6 +143,10 @@ impl ReasoningStore for Store {
     }
     fn is_cancelled(&self) -> bool {
         self.cancelled
+            || self
+                .cancel_signal
+                .as_ref()
+                .is_some_and(|signal| signal.load(Ordering::Relaxed))
     }
 }
 

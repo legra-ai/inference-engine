@@ -160,6 +160,8 @@ impl Rdf12PropositionConstructor {
                 return Err(ReasoningError::LimitExceeded(Limit::Matches));
             }
             report.matches += 1;
+            crate::cooperative::checkpoint(report.matches).await;
+            Self::cancel(store)?;
         }
         Ok(row)
     }

@@ -4,6 +4,7 @@ use datalog_structural_model::Program;
 use rdf_reasoning::{Exclusion, Preset, PresetParseError};
 use serde::Serialize;
 
+mod cooperative;
 pub mod entailment;
 pub mod reasoning;
 

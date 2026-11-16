@@ -161,6 +161,8 @@ impl Reasoner {
                 return Err(ReasoningError::LimitExceeded(Limit::Matches));
             }
             report.matches += 1;
+            crate::cooperative::checkpoint(report.matches).await;
+            Self::check_cancelled(store)?;
         }
         Ok(tuple)
     }
