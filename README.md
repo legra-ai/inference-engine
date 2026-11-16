@@ -17,7 +17,7 @@ use the same Rust implementation and published semantic dependencies.
 The Rust API executes the explicit `rdfs-subclass` profile (shared rules `rdfs9`
 and `rdfs11`) and `rdfs-core` (fourteen shared RDF/RDFS clauses). Callers supply
 asynchronous database scans, indexed probes and scratch storage. Separate bounded
-APIs seed RDF 1.2 axioms, validate streamed literal payloads, execute shared
+APIs seed RDF 1.2 ground axioms and scoped blank witnesses, validate streamed literal payloads, execute shared
 default-map literal-typing clauses and check simple source-to-target entailment
 with nested blank-node substitution. See [the adapter and execution contracts](docs/rdfs-subclass.md).
 

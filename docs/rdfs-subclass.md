@@ -59,6 +59,19 @@ datatype validation and consistency, recursive term/proposition semantics, and
 existential matching. Finite seeding plus fourteen rules is not a conformance
 claim.
 
+`seed_existential` additionally executes the shared nonempty-class descriptors:
+three `rdfD1a` requirements for the mandatory datatype map, plus `rdfs14a` for
+RDFS propositions. Implement `Rdf12WitnessStore` to allocate a fresh scoped blank
+once per descriptor and immutable attempt, persisting that binding in scratch.
+Repeated seeding reuses its key and consumes no extra novel-output budget.
+
+The witness is neither a fixed user IRI, a Skolem IRI nor a chosen lexical
+representative. Different keys do not assert unequal denotations. Preserve
+descriptor, exact ground membership, attempt/snapshot identity and origin as
+semantic evidence; standardize witnesses apart from input/target blank scopes.
+These seeds allow an empty source to entail existential class membership while
+correctly withholding membership for an arbitrary fixed user IRI.
+
 ## Streaming literal inspection
 
 `Rdf12LiteralValidator` checks one literal through an adapter's `LiteralReader`.
