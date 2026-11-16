@@ -84,6 +84,28 @@ The caller owns total attempt budgets across literals. Literal inspection is a
 prerequisite for datatype inference and consistency checking, not their complete
 implementation.
 
+## Source-to-target simple entailment
+
+`entailment::SimpleEntailment` checks whether an immutable source graph contains
+one instance of an immutable target graph. Both implement `TripleSource`, and
+an `EntailmentTerms` adapter supplies asynchronous blank-node classification and
+triple-term decomposition in a shared exact term-identity domain.
+
+Target blank nodes are existential variables. One consistent substitution is
+used across all target triples and inside nested triple terms. Different blank
+nodes may map to the same term. The matcher backtracks across candidate source
+triples and does not treat the contents of triple terms as assertions.
+
+Source rows are streamed. Explicit limits bound retained target patterns, active
+cursors, blank bindings, pending term pairs and total work. A target that exceeds
+its budget fails with a typed error; it is never reported as non-entailed.
+Storage errors and cancellation also abort the decision.
+
+This is simple graph matching. To use it for RDFS 1.2 entailment, the caller must
+first implement the complete target-relevant semantic procedure, including
+datatype consistency and proposition handling. It does not compare datatype
+values, derive missing closure or certify full RDFS conformance.
+
 ## Rust use
 
 ```rust
