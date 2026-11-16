@@ -1,6 +1,10 @@
-use super::{AxiomFamily, Evidence, Inference, Limit, ReasoningError, ReasoningStore};
+use super::{
+    AxiomFamily, Evidence, Inference, Limit, Rdf12WitnessStore, ReasoningError, ReasoningStore,
+};
 use datalog_structural_model::{Rule, Term};
-use rdf_reasoning::{Rdf12AxiomId, Rdf12ContainerProperty, TRIPLE_RELATION};
+use rdf_reasoning::{
+    Rdf12AxiomId, Rdf12ContainerProperty, Rdf12ExistentialAxiomId, TRIPLE_RELATION,
+};
 use std::num::NonZeroU64;
 
 /// Explicit bounded seeding of shared RDF 1.2 axioms into fresh attempt storage.
@@ -79,6 +83,42 @@ impl Rdf12AxiomSeeder {
         Self::check_cancelled(store)
     }
 
+    /// Stage one shared nonempty-class membership using a caller-owned blank.
+    ///
+    /// RDF uses the three `rdfD1a` descriptors; RDFS also uses `rdfs14a`.
+    /// Repeated calls reuse the attempt's stored witness. Distinct blank keys
+    /// imply neither unequal denotations nor a unique-name assumption. Preserve
+    /// attempt/snapshot identity alongside descriptor and ground membership.
+    ///
+    /// # Errors
+    /// Unsupported allocation, storage failure, cancellation or exhausted output
+    /// budget aborts the entire attempt; partial witnesses must not be promoted.
+    pub async fn seed_existential<S: Rdf12WitnessStore>(
+        &mut self,
+        store: &mut S,
+        id: Rdf12ExistentialAxiomId,
+    ) -> Result<(), ReasoningError<S::Error>> {
+        Self::check_cancelled(store)?;
+        let blank = store
+            .resolve_existential_blank(id)
+            .await
+            .map_err(ReasoningError::Storage)?;
+        let predicate = store
+            .resolve_iri("http://www.w3.org/1999/02/22-rdf-syntax-ns#type")
+            .await
+            .map_err(ReasoningError::Storage)?;
+        let class = store
+            .resolve_iri(id.class_iri())
+            .await
+            .map_err(ReasoningError::Storage)?;
+        self.stage(
+            store,
+            [blank, predicate, class],
+            AxiomFamily::Rdf12Existential(id),
+        )
+        .await
+    }
+
     async fn seed_rule<S: ReasoningStore>(
         &mut self,
         store: &mut S,
@@ -107,6 +147,16 @@ impl Rdf12AxiomSeeder {
                 .await
                 .map_err(ReasoningError::Storage)?,
         ];
+        self.stage(store, triple, family).await
+    }
+
+    async fn stage<S: ReasoningStore>(
+        &mut self,
+        store: &mut S,
+        triple: [S::Term; 3],
+        family: AxiomFamily,
+    ) -> Result<(), ReasoningError<S::Error>> {
+        Self::check_cancelled(store)?;
         if store
             .contains(&triple)
             .await

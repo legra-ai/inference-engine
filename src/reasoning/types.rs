@@ -1,5 +1,7 @@
 use super::LiteralOccurrence;
-use rdf_reasoning::{Exclusion, Preset, Rdf12AxiomId, Rdf12LiteralRuleId, RuleId};
+use rdf_reasoning::{
+    Exclusion, Preset, Rdf12AxiomId, Rdf12ExistentialAxiomId, Rdf12LiteralRuleId, RuleId,
+};
 use serde::{Deserialize, Serialize};
 use std::{
     error::Error,
@@ -116,6 +118,8 @@ pub enum AxiomFamily {
     Rdf12(Rdf12AxiomId),
     /// A checked canonical container IRI's RDF/RDFS vocabulary axioms.
     Rdf12Container,
+    /// Nonempty-class requirement, realized by a fresh scoped blank witness.
+    Rdf12Existential(Rdf12ExistentialAxiomId),
 }
 
 /// Exact derivation authority, distinguishing premises from ground axioms.

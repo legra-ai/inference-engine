@@ -1,8 +1,9 @@
 //! Capped, test-only graph adapter; never used by production execution.
 
 use inference_engine::reasoning::{
-    Inference, ReasoningStore, RunLimits, TripleCursor, TripleSource,
+    Inference, Rdf12WitnessStore, ReasoningStore, RunLimits, TripleCursor, TripleSource,
 };
+use rdf_reasoning::Rdf12ExistentialAxiomId;
 use std::{
     collections::{BTreeMap, BTreeSet},
     io,
@@ -62,6 +63,9 @@ pub struct Store {
     pub fail_write: bool,
     pub fail_cursor: bool,
     pub fail_after_writes: Option<usize>,
+    // bounded: at most four standard existential descriptors per capped test attempt.
+    pub witnesses: BTreeMap<Rdf12ExistentialAxiomId, u64>,
+    pub witness_scope: u64,
     iris: BTreeMap<String, u64>,
 }
 
@@ -137,4 +141,21 @@ pub fn limits(inferred: u64, rounds: u32, matches: u64) -> RunLimits {
         NonZeroU64::new(inferred).unwrap(),
         NonZeroU64::new(matches).unwrap(),
     )
+}
+
+impl Rdf12WitnessStore for Store {
+    async fn resolve_existential_blank(&mut self, id: Rdf12ExistentialAxiomId) -> io::Result<u64> {
+        if let Some(key) = self.witnesses.get(&id) {
+            return Ok(*key);
+        }
+        assert!(self.witness_scope < 16, "bounded fixture scope exhausted");
+        let index = Rdf12ExistentialAxiomId::ALL
+            .iter()
+            .position(|candidate| *candidate == id)
+            .unwrap() as u64;
+        let blank = 100 + 4 * self.witness_scope + index;
+        assert!(self.witnesses.len() < 4);
+        self.witnesses.insert(id, blank);
+        Ok(blank)
+    }
 }

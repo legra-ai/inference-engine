@@ -98,3 +98,19 @@ pub trait ReasoningStore: Send {
     /// support cancellation through the backend's own error/control boundary.
     fn is_cancelled(&self) -> bool;
 }
+
+/// Caller-owned fresh blank allocation for standard nonempty-class requirements.
+///
+/// Keep bindings in the isolated attempt's storage, keyed by semantic descriptor
+/// and immutable scope. Allocation is independent of lexical representatives or
+/// user-visible IRI minting; unsupported blank allocation must fail explicitly.
+pub trait Rdf12WitnessStore: ReasoningStore {
+    /// Resolve one fresh scoped RDF blank witness, reusing the persisted key for
+    /// repeated calls with the same descriptor in this attempt. Standardize it
+    /// apart from input and target blanks and witnesses in different attempts.
+    /// Never return a fixed user IRI, Skolem IRI or chosen literal value.
+    fn resolve_existential_blank(
+        &mut self,
+        id: rdf_reasoning::Rdf12ExistentialAxiomId,
+    ) -> impl Future<Output = Result<Self::Term, Self::Error>> + Send;
+}
