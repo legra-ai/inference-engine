@@ -1,6 +1,9 @@
 use super::{ReasoningError, ReasoningStore};
 use datalog_structural_model::{Atom, Literal, Term, VariableSymbol};
-use rdf_reasoning::{RDF12_LITERAL_DATATYPE_RELATION, Rdf12LiteralRuleId, RuleId, TRIPLE_RELATION};
+use rdf_reasoning::{
+    RDF12_LITERAL_DATATYPE_RELATION, Rdf12LiteralRuleId, Rdf12PropositionRuleId, RuleId,
+    TRIPLE_RELATION,
+};
 
 const VARIABLES: usize = 6;
 pub(super) type Bindings<T> = [Option<T>; VARIABLES];
@@ -14,12 +17,14 @@ pub(super) struct Pattern<T, const N: usize = 3>([Slot<T>; N]);
 enum DefinitionId {
     Rdf(RuleId),
     Literal(Rdf12LiteralRuleId),
+    Proposition(Rdf12PropositionRuleId),
 }
 impl DefinitionId {
     fn error<E>(self) -> ReasoningError<E> {
         match self {
             Self::Rdf(id) => ReasoningError::UnsupportedRule(id),
             Self::Literal(id) => ReasoningError::UnsupportedLiteralRule(id),
+            Self::Proposition(id) => ReasoningError::UnsupportedPropositionRule(id),
         }
     }
 }
@@ -27,6 +32,66 @@ pub(super) struct Clause<T> {
     pub id: RuleId,
     pub head: Pattern<T>,
     pub body: Body<T>,
+}
+
+pub(super) struct PropositionClause<T> {
+    pub id: Rdf12PropositionRuleId,
+    pub body: [Pattern<T>; 3],
+    pub triple: Pattern<T>,
+    pub predicate: T,
+    pub object: T,
+}
+impl<T: Clone + Eq + Send + Sync> PropositionClause<T> {
+    pub async fn compile<S: ReasoningStore<Term = T>>(
+        id: Rdf12PropositionRuleId,
+        store: &mut S,
+    ) -> Result<Self, ReasoningError<S::Error>> {
+        let rule = id.definition();
+        let identity = DefinitionId::Proposition(id);
+        let [
+            Literal::Positive(first),
+            Literal::Positive(second),
+            Literal::Positive(third),
+        ] = rule.body.as_slice()
+        else {
+            return Err(identity.error());
+        };
+        let [
+            Term::TripleTerm(quoted),
+            Term::Constant(predicate),
+            Term::Constant(object),
+        ] = rule.head.terms.as_slice()
+        else {
+            return Err(identity.error());
+        };
+        if rule.head.predicate.as_str() != TRIPLE_RELATION {
+            return Err(identity.error());
+        }
+        // bounded: three fixed body atoms and at most six admitted variable slots.
+        let mut variables = Vec::with_capacity(VARIABLES);
+        let body = [
+            Pattern::compile(first, TRIPLE_RELATION, identity, &mut variables, store).await?,
+            Pattern::compile(second, TRIPLE_RELATION, identity, &mut variables, store).await?,
+            Pattern::compile(third, TRIPLE_RELATION, identity, &mut variables, store).await?,
+        ];
+        let triple =
+            Pattern::compile(quoted, TRIPLE_RELATION, identity, &mut variables, store).await?;
+        let predicate = store
+            .resolve_iri(predicate.as_str())
+            .await
+            .map_err(ReasoningError::Storage)?;
+        let object = store
+            .resolve_iri(object.as_str())
+            .await
+            .map_err(ReasoningError::Storage)?;
+        Ok(Self {
+            id,
+            body,
+            triple,
+            predicate,
+            object,
+        })
+    }
 }
 
 pub(super) enum Body<T> {

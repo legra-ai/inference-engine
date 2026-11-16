@@ -7,6 +7,7 @@ mod engine;
 mod literal;
 mod literal_typing;
 mod plan;
+mod proposition;
 mod seeding;
 mod types;
 
@@ -16,6 +17,7 @@ pub use literal_typing::{
     LiteralOccurrence, LiteralOccurrenceCursor, LiteralOccurrenceRead, LiteralRole,
     LiteralTypingError, LiteralTypingLimits, LiteralTypingReport, Rdf12LiteralTyper,
 };
+pub use proposition::{PropositionLimits, PropositionReport, Rdf12PropositionConstructor};
 pub use seeding::Rdf12AxiomSeeder;
 pub use types::{
     AxiomFamily, Evidence, ExecutionProfile, Inference, Limit, Premises, ProfileError,
@@ -112,5 +114,18 @@ pub trait Rdf12WitnessStore: ReasoningStore {
     fn resolve_existential_blank(
         &mut self,
         id: rdf_reasoning::Rdf12ExistentialAxiomId,
+    ) -> impl Future<Output = Result<Self::Term, Self::Error>> + Send;
+}
+
+/// Explicit generalized triple-term construction in the caller's dictionary.
+pub trait Rdf12TripleTermStore: ReasoningStore {
+    /// Resolve a canonical subject/predicate/object triple term without asserting
+    /// its contents. Preserve generalized keys, including literal predicates.
+    /// Enforce actual substituted nesting and dictionary/resource limits here.
+    /// Unsupported terms or exhausted limits must return an error, never a
+    /// coerced term, omitted fact or alternate IRI representation.
+    fn resolve_triple_term(
+        &mut self,
+        triple: [Self::Term; 3],
     ) -> impl Future<Output = Result<Self::Term, Self::Error>> + Send;
 }

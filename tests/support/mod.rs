@@ -1,7 +1,8 @@
 //! Capped, test-only graph adapter; never used by production execution.
 
 use inference_engine::reasoning::{
-    Inference, Rdf12WitnessStore, ReasoningStore, RunLimits, TripleCursor, TripleSource,
+    Inference, Rdf12TripleTermStore, Rdf12WitnessStore, ReasoningStore, RunLimits, TripleCursor,
+    TripleSource,
 };
 use rdf_reasoning::Rdf12ExistentialAxiomId;
 use std::{
@@ -66,6 +67,10 @@ pub struct Store {
     // bounded: at most four standard existential descriptors per capped test attempt.
     pub witnesses: BTreeMap<Rdf12ExistentialAxiomId, u64>,
     pub witness_scope: u64,
+    // bounded: at most 128 term constructions/depth entries per constructor fixture.
+    pub constructed: BTreeMap<Triple, u64>,
+    pub term_depths: BTreeMap<u64, u32>,
+    pub snapshot_calls: u64,
     iris: BTreeMap<String, u64>,
 }
 
@@ -103,6 +108,7 @@ impl ReasoningStore for Store {
         Ok(self.iri(iri))
     }
     async fn snapshot(&mut self) -> io::Result<Snapshot> {
+        self.snapshot_calls += 1;
         if self.fail_read {
             return Err(io::Error::other("read failed"));
         }
@@ -157,5 +163,30 @@ impl Rdf12WitnessStore for Store {
         assert!(self.witnesses.len() < 4);
         self.witnesses.insert(id, blank);
         Ok(blank)
+    }
+}
+
+impl Rdf12TripleTermStore for Store {
+    async fn resolve_triple_term(&mut self, triple: Triple) -> io::Result<u64> {
+        if let Some(key) = self.constructed.get(&triple) {
+            return Ok(*key);
+        }
+        let depth = triple
+            .iter()
+            .map(|key| self.term_depths.get(key).copied().unwrap_or(0))
+            .max()
+            .unwrap()
+            + 1;
+        if depth > 4 {
+            return Err(io::Error::other(
+                "substituted triple-term nesting limit exceeded",
+            ));
+        }
+        assert!(self.constructed.len() < 128);
+        assert!(self.term_depths.len() < 128);
+        let key = 500 + self.constructed.len() as u64;
+        self.constructed.insert(triple, key);
+        self.term_depths.insert(key, depth);
+        Ok(key)
     }
 }
