@@ -5,12 +5,17 @@
 
 mod engine;
 mod literal;
+mod literal_typing;
 mod plan;
 mod seeding;
 mod types;
 
 pub use engine::Reasoner;
 pub use literal::{LiteralError, LiteralReader, LiteralReport, Rdf12LiteralValidator};
+pub use literal_typing::{
+    LiteralOccurrence, LiteralOccurrenceCursor, LiteralOccurrenceRead, LiteralRole,
+    LiteralTypingError, LiteralTypingLimits, LiteralTypingReport, Rdf12LiteralTyper,
+};
 pub use seeding::Rdf12AxiomSeeder;
 pub use types::{
     AxiomFamily, Evidence, ExecutionProfile, Inference, Limit, Premises, ProfileError,

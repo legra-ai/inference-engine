@@ -2,7 +2,7 @@
 use inference_engine::reasoning::{LiteralError, LiteralReader, Rdf12LiteralValidator};
 use rdf_reasoning::Rdf12Datatype;
 use rdf_structural_model::{BaseDirection, LanguageTag, Literal, LiteralMetadata, ModelError};
-use std::{io, num::NonZeroU64};
+use std::io;
 
 struct Reader {
     metadata: LiteralMetadata,
@@ -63,7 +63,7 @@ impl LiteralReader for Reader {
 }
 
 fn validator(maximum: u64) -> Rdf12LiteralValidator {
-    Rdf12LiteralValidator::new(NonZeroU64::new(maximum).unwrap())
+    Rdf12LiteralValidator::new(maximum)
 }
 
 #[tokio::test]

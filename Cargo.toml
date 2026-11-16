@@ -27,8 +27,8 @@ build = "build.rs"
 include = ["Cargo.toml", "Cargo.lock", "build.rs", "build_support.rs", "README.md", "LICENSE-APACHE", "LICENSE-MIT", "src/**/*.rs", "tests/**/*.rs", "docs/rdfs-subclass.md"]
 
 [dependencies]
-datalog-structural-model = "=3.0.0"
-rdf-reasoning = "=2.10.0"
+datalog-structural-model = "=3.0.4"
+rdf-reasoning = "=2.11.0"
 rdf-structural-model = "=0.4.0"
 serde = { version = "1", features = ["derive"] }
 

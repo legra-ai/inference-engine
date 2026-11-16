@@ -97,11 +97,11 @@ checksum = "914a755b7c2d4af2bdcff7ce1739e2db9a1b81a9b07123d8015786ae03c0980d"
 
 [[package]]
 name = "datalog-structural-model"
-version = "3.0.0"
+version = "3.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f10fa5079ad01643d22f86c1bdc0061bc12bf066df1e0b3d9d0d0b8130191e34"
+checksum = "0633f304d91fa22d698aee02b8f96f4f38fb47f9c4bd05b612270aecfe015bfb"
 dependencies = [
- "rhusky 0.0.6",
+ "rhusky",
  "rustc-hash",
  "serde",
 ]
@@ -321,7 +321,7 @@ checksum = "44ab0f22169b04b5be1eb69a01e955c158d63ccce416650653ab4dae1cfc8907"
 dependencies = [
  "borrow-or-share",
  "ref-cast",
- "rhusky 2.0.7",
+ "rhusky",
  "serde",
 ]
 
@@ -614,9 +614,9 @@ checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
 
 [[package]]
 name = "rdf-reasoning"
-version = "2.10.0"
+version = "2.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c75736f4bdf36d7c5aabf5d527d9ae02181ee165268087e62812a81ffcae1143"
+checksum = "946e577c7b873173331c10117d0100d5bb26f26c27710b2d3968c6516a25de83"
 dependencies = [
  "datalog-structural-model",
  "num-bigint",
@@ -633,7 +633,7 @@ dependencies = [
  "borrow-or-share",
  "iri-rfc3987",
  "langtag",
- "rhusky 2.0.7",
+ "rhusky",
  "serde",
  "thiserror 2.0.21",
 ]

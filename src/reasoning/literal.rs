@@ -1,7 +1,7 @@
 use rdf_reasoning::{Rdf12Datatype, Rdf12LexicalError};
 use rdf_structural_model::{LiteralMetadata, ModelError};
 use serde::{Deserialize, Serialize};
-use std::{error::Error, fmt, future::Future, num::NonZeroU64};
+use std::{error::Error, fmt, future::Future};
 
 const CHUNK: usize = 4096;
 
@@ -44,12 +44,13 @@ pub struct LiteralReport {
 /// Unknown encountered datatypes remain opaque. This does not implement datatype
 /// value comparison or graph-wide consistency and never rewrites a source term.
 pub struct Rdf12LiteralValidator {
-    maximum: NonZeroU64,
+    maximum: u64,
 }
 
 impl Rdf12LiteralValidator {
-    /// Set a strict per-literal byte budget, including opaque datatype payloads.
-    pub const fn new(maximum: NonZeroU64) -> Self {
+    /// Set a strict byte budget, including opaque datatype payloads. A zero
+    /// budget permits only an empty lexical form, verified through an EOF probe.
+    pub const fn new(maximum: u64) -> Self {
         Self { maximum }
     }
 
@@ -83,7 +84,7 @@ impl Rdf12LiteralValidator {
         let mut offset = 0_u64;
         loop {
             Self::check_cancelled(reader)?;
-            let remaining = self.maximum.get() - bytes;
+            let remaining = self.maximum - bytes;
             let capacity = remaining.saturating_add(1).min(CHUNK as u64) as usize;
             let count = reader
                 .read(&mut buffer[pending..pending + capacity])

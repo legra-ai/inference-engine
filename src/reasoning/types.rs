@@ -1,4 +1,5 @@
-use rdf_reasoning::{Exclusion, Preset, Rdf12AxiomId, RuleId};
+use super::LiteralOccurrence;
+use rdf_reasoning::{Exclusion, Preset, Rdf12AxiomId, Rdf12LiteralRuleId, RuleId};
 use serde::{Deserialize, Serialize};
 use std::{
     error::Error,
@@ -130,6 +131,15 @@ pub enum Evidence<T> {
     },
     /// A ground standard axiom has no rule premises.
     Axiom(AxiomFamily),
+    /// A shared literal-typing clause consumed validated semantic metadata.
+    Literal {
+        /// Exact parameterized shared clause identity.
+        rule: Rdf12LiteralRuleId,
+        /// Original selected root and literal key, including source/target role.
+        occurrence: LiteralOccurrence<T>,
+        /// Exact validated lexical byte count; not a lexical value replacement.
+        lexical_bytes: u64,
+    },
 }
 
 /// One novel tuple and its exact derivation authority.
@@ -177,6 +187,8 @@ pub enum ReasoningError<E> {
     UnsupportedRule(RuleId),
     /// A shared axiom is not an empty-body ground triple of IRI constants.
     UnsupportedAxiom,
+    /// A shared literal clause does not have the admitted metadata-premise shape.
+    UnsupportedLiteralRule(Rdf12LiteralRuleId),
 }
 impl<E: fmt::Display> fmt::Display for ReasoningError<E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -196,6 +208,9 @@ impl<E: fmt::Display> fmt::Display for ReasoningError<E> {
                 write!(f, "unsupported shared rule definition: {rule:?}")
             }
             Self::UnsupportedAxiom => f.write_str("unsupported shared ground axiom definition"),
+            Self::UnsupportedLiteralRule(rule) => {
+                write!(f, "unsupported shared literal rule definition: {rule:?}")
+            }
         }
     }
 }

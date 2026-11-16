@@ -116,7 +116,10 @@ impl Reasoner {
         store: &mut S,
         report: &mut RunReport,
     ) -> Result<(), ReasoningError<S::Error>> {
-        let triple = clause.head.ground(bindings, clause.id)?;
+        let triple = clause
+            .head
+            .ground(bindings)
+            .ok_or(ReasoningError::UnsupportedRule(clause.id))?;
         if store
             .contains(&triple)
             .await
