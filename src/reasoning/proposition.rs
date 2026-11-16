@@ -150,7 +150,7 @@ impl Rdf12PropositionConstructor {
     async fn next<S: ReasoningStore, C: TripleCursor<Term = S::Term, Error = S::Error>>(
         &self,
         cursor: &mut C,
-        store: &S,
+        store: &mut S,
         report: &mut PropositionReport,
     ) -> Result<Option<[S::Term; 3]>, ReasoningError<S::Error>> {
         Self::cancel(store)?;

@@ -1,6 +1,10 @@
 //! Backend stores need not be Sync to execute on a multithreaded runtime.
 
-use inference_engine::reasoning::{Reasoner, ReasoningStore};
+use inference_engine::reasoning::{
+    LiteralOccurrenceCursor, Rdf12AxiomSeeder, Rdf12LiteralTyper, Rdf12PropositionConstructor,
+    Rdf12TripleTermStore, Rdf12WitnessStore, Reasoner, ReasoningStore,
+};
+use rdf_reasoning::Rdf12ExistentialAxiomId;
 use std::future::Future;
 
 fn require_send(_: impl Future + Send) {}
@@ -8,4 +12,26 @@ fn require_send(_: impl Future + Send) {}
 #[allow(dead_code)]
 fn executor_future_is_send<S: ReasoningStore>(reasoner: &Reasoner, store: &mut S) {
     require_send(reasoner.run(store));
+}
+
+#[allow(dead_code)]
+fn constructor_future_is_send<S: Rdf12TripleTermStore>(
+    constructor: &Rdf12PropositionConstructor,
+    store: &mut S,
+) {
+    require_send(constructor.run(store));
+}
+
+#[allow(dead_code)]
+fn literal_typing_future_is_send<S, C>(typer: &Rdf12LiteralTyper, store: &mut S, cursor: &mut C)
+where
+    S: ReasoningStore,
+    C: LiteralOccurrenceCursor<Term = S::Term, Error = S::Error>,
+{
+    require_send(typer.run(store, cursor));
+}
+
+#[allow(dead_code)]
+fn witness_future_is_send<S: Rdf12WitnessStore>(seeder: &mut Rdf12AxiomSeeder, store: &mut S) {
+    require_send(seeder.seed_existential(store, Rdf12ExistentialAxiomId::Rdfs14a));
 }
