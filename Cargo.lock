@@ -125,9 +125,9 @@ checksum = "914a755b7c2d4af2bdcff7ce1739e2db9a1b81a9b07123d8015786ae03c0980d"
 
 [[package]]
 name = "datalog-structural-model"
-version = "3.0.4"
+version = "3.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0633f304d91fa22d698aee02b8f96f4f38fb47f9c4bd05b612270aecfe015bfb"
+checksum = "b3eaf288c21d4dd6e930060b32905059645052fc0c38c7da93cc91a20380c165"
 dependencies = [
  "rhusky",
  "rustc-hash",
@@ -343,6 +343,7 @@ name = "inference-engine"
 version = "0.1.0-alpha.2"
 dependencies = [
  "datalog-structural-model",
+ "iri-rfc3987",
  "oxrdf",
  "oxttl",
  "postcard",
@@ -761,9 +762,9 @@ dependencies = [
 
 [[package]]
 name = "rdf-reasoning"
-version = "2.15.0"
+version = "2.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d03a3b53fb7191082c38bfe66e4167147e6b091797fd8214e58d76e50f540384"
+checksum = "d49bb0bdb5bb0dc4cf2061173266dc60d4b2ec748ef25be699fff677f4180845"
 dependencies = [
  "datalog-structural-model",
  "num-bigint",

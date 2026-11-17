@@ -5,8 +5,10 @@ mod support;
 use inference_engine::{
     entailment::EntailmentTerms,
     reasoning::{
-        DatatypeConflict, DatatypeConflictSink, Inference, LiteralReader, LiteralTermAccess,
-        Rdf12ContainerAccess, Rdf12TripleTermStore, Rdf12WitnessStore, ReasoningStore,
+        DatatypeConflict, DatatypeConflictLimits, DatatypeConflictSink, Inference, LiteralReader,
+        LiteralTermAccess, LiteralTypingLimits, OccurrenceLimits, PropositionLimits,
+        Rdf12ContainerAccess, Rdf12TripleTermStore, Rdf12WitnessStore, Rdfs12SourceConfig,
+        ReasoningStore, RunLimits,
     },
 };
 use rdf_reasoning::{Rdf12ContainerProperty, Rdf12ExistentialAxiomId};
@@ -14,12 +16,14 @@ use rdf_structural_model::{Literal, LiteralMetadata};
 use std::{
     collections::{BTreeMap, BTreeSet},
     io,
-    num::NonZeroU32,
+    num::{NonZeroU32, NonZeroU64},
     sync::{
         Arc, Mutex,
         atomic::{AtomicBool, Ordering},
     },
 };
+#[allow(unused_imports)] // Shared by the authored-manifest binary.
+pub use support::Store as MemoryStore;
 
 #[derive(Default)]
 struct Dictionary {
@@ -27,8 +31,11 @@ struct Dictionary {
     iris: BTreeMap<u64, Arc<str>>,
     // bounded: at most 1024 fixture constructor entries, enforced by inner Store.
     quoted: BTreeMap<u64, [u64; 3]>,
-    // bounded: four standard nonempty descriptors per source attempt.
+    // bounded: at most 128 parsed fixture blanks plus four standard witnesses.
     blanks: BTreeSet<u64>,
+    // bounded: at most 128 scoped blank labels per fixture pair.
+    #[allow(dead_code)] // Shared by the authored-manifest binary.
+    blank_ids: BTreeMap<(u8, String), u64>,
     // bounded: at most 16 literal records of at most 32 KiB each.
     literals: BTreeMap<u64, Arc<LiteralData>>,
     wrong_container: bool,
@@ -81,7 +88,28 @@ impl Fixture {
         self.store.dictionary.lock().unwrap().iri(key, iri);
         key
     }
+    #[allow(dead_code)] // Shared by the authored-manifest binary.
+    pub fn blank(&mut self, scope: u8, label: &str) -> io::Result<u64> {
+        if label.len() > 256 {
+            return Err(io::Error::other("fixture blank label budget exceeded"));
+        }
+        let mut dictionary = self.store.dictionary.lock().unwrap();
+        let name = (scope, label.to_owned());
+        if let Some(key) = dictionary.blank_ids.get(&name) {
+            return Ok(*key);
+        }
+        if dictionary.blank_ids.len() == 128 {
+            return Err(io::Error::other("fixture scoped blank budget exceeded"));
+        }
+        let key = 3000 + dictionary.blank_ids.len() as u64;
+        dictionary.blank_ids.insert(name, key);
+        dictionary.blanks.insert(key);
+        Ok(key)
+    }
     pub fn literal(&mut self, payload: &str) -> u64 {
+        self.literal_metadata(payload, Literal::string("").metadata().clone())
+    }
+    pub fn literal_metadata(&mut self, payload: &str, metadata: LiteralMetadata) -> u64 {
         assert!(payload.len() <= 32768);
         let mut dictionary = self.store.dictionary.lock().unwrap();
         assert!(dictionary.literals.len() < 16);
@@ -89,7 +117,7 @@ impl Fixture {
         dictionary.literals.insert(
             key,
             Arc::new(LiteralData {
-                metadata: Literal::string("").metadata().clone(),
+                metadata,
                 payload: payload.as_bytes().to_vec(),
             }),
         );
@@ -125,7 +153,7 @@ impl Rdf12WitnessStore for Store {
     async fn resolve_existential_blank(&mut self, id: Rdf12ExistentialAxiomId) -> io::Result<u64> {
         let key = self.inner.resolve_existential_blank(id).await?;
         let mut dictionary = self.dictionary.lock().unwrap();
-        assert!(dictionary.blanks.len() < 4 || dictionary.blanks.contains(&key));
+        assert!(dictionary.blanks.len() < 132 || dictionary.blanks.contains(&key));
         dictionary.blanks.insert(key);
         Ok(key)
     }
@@ -245,5 +273,19 @@ impl DatatypeConflictSink for Diagnostics {
         assert!(self.0.len() < 100); // bounded: source fixture diagnostics explicitly capped at 100.
         self.0.push(value);
         Ok(())
+    }
+}
+
+pub fn config() -> Rdfs12SourceConfig {
+    let n = |value| NonZeroU64::new(value).unwrap();
+    Rdfs12SourceConfig {
+        axioms: n(128),
+        rounds: NonZeroU32::new(16).unwrap(),
+        structural: RunLimits::new(NonZeroU32::new(32).unwrap(), n(3000), n(1_000_000)),
+        traversal: OccurrenceLimits::new(NonZeroU32::new(8).unwrap(), n(30_000), n(100_000)),
+        literals: LiteralTypingLimits::new(n(10_000), n(3000), 1_000_000),
+        propositions: PropositionLimits::new(n(3000), n(10_000)),
+        conflicts: DatatypeConflictLimits::new(n(100), n(100_000)),
+        iri_bytes: NonZeroU32::new(4096).unwrap(),
     }
 }

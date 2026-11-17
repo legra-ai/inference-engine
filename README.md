@@ -63,6 +63,14 @@ comparison as unsupported. Stronger RDF/RDFS regimes and inherited RDF 1.1
 semantic tests are not counted as passing by that harness. This is measured
 partial coverage, not full RDF 1.2 or RDFS conformance.
 
+A separate harness executes the eighteen authored RDF 1.2 regression cases
+published in `rdf-reasoning` 2.17.0. It parses every source and target with
+independent blank-node scopes, then uses the native source-preparation and
+simple-matching APIs. Eight cases have positive proofs; six require target-context
+execution and four require a complete negative-decision procedure. Those ten
+cases are reported as unsupported, separately from failures and execution errors.
+The original manifest, hashes and both licenses are included in the crate.
+
 ## Development and releases
 
 Rust is pinned in `rust-toolchain.toml`; formatting has an independent nightly

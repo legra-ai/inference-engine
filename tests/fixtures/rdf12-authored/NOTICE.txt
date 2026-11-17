@@ -1,0 +1,9 @@
+Authored RDF 1.2 regression fixtures, copied unmodified from rdf-reasoning 2.17.0.
+Upstream: https://github.com/legra-ai/rdf-reasoning
+Source revision: 87e72148432b65268c6b4d64aeda900a7bf1128a
+Crate SHA-256: d49bb0bdb5bb0dc4cf2061173266dc60d4b2ec748ef25be699fff677f4180845
+Manifest SHA-256: d415b4cc6fbae9129a431805df2ccd4c4472a49ae8a18af5d071b43efa363ecd
+Format 1, revision 2, eighteen cases. MIT OR Apache-2.0; original license files included.
+These are authored regression cases, distinct from the pinned W3C test suite.
+Manifest validation and syntax parsing alone do not establish entailment execution.
+The consumer reports unsupported decisions separately and never counts them as passing.

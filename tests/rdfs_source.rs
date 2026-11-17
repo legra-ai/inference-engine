@@ -1,26 +1,13 @@
 //! Source preparation must complete before any target-context augmentation.
 mod source_support;
 use inference_engine::reasoning::{
-    DatatypeConflictLimits, LiteralTypingLimits, OccurrenceLimits, PropositionLimits, Rdfs12Source,
-    Rdfs12SourceConfig, Rdfs12SourceError, Rdfs12SourceOutcome, RunLimits,
+    Rdfs12Source, Rdfs12SourceConfig, Rdfs12SourceError, Rdfs12SourceOutcome,
 };
 use rdf_reasoning::Rdf12Datatype;
-use source_support::{Diagnostics, Fixture};
+use source_support::{Diagnostics, Fixture, config};
 use std::num::{NonZeroU32, NonZeroU64};
 fn n(value: u64) -> NonZeroU64 {
     NonZeroU64::new(value).unwrap()
-}
-fn config() -> Rdfs12SourceConfig {
-    Rdfs12SourceConfig {
-        axioms: n(128),
-        rounds: NonZeroU32::new(16).unwrap(),
-        structural: RunLimits::new(NonZeroU32::new(32).unwrap(), n(3000), n(1_000_000)),
-        traversal: OccurrenceLimits::new(NonZeroU32::new(8).unwrap(), n(30_000), n(100_000)),
-        literals: LiteralTypingLimits::new(n(10_000), n(3000), 1_000_000),
-        propositions: PropositionLimits::new(n(3000), n(10_000)),
-        conflicts: DatatypeConflictLimits::new(n(100), n(100_000)),
-        iri_bytes: NonZeroU32::new(4096).unwrap(),
-    }
 }
 #[tokio::test]
 async fn prepares_inherited_membership_and_seeded_source_without_claiming_target_entailment() {
