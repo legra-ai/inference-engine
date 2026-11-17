@@ -91,3 +91,24 @@ fn candidate_constructor_future_is_send<S, C>(
 {
     require_send(constructor.run_candidates(store, candidates));
 }
+
+#[allow(dead_code)]
+fn source_preparation_future_is_send<S, A, D>(
+    source: &inference_engine::reasoning::Rdfs12Source,
+    store: &mut S,
+    access: &A,
+    sink: &mut D,
+) where
+    S: Rdf12WitnessStore + Rdf12TripleTermStore,
+    A: inference_engine::reasoning::LiteralTermAccess<Term = S::Term, Error = S::Error>
+        + inference_engine::reasoning::Rdf12ContainerAccess,
+    D: DatatypeConflictSink<Term = S::Term, Error = S::Error>,
+{
+    require_send(source.run(store, access, sink));
+}
+#[allow(dead_code)]
+fn borrowed_source_error_retains_error_source(
+    error: &inference_engine::reasoning::Rdfs12SourceError<&str, std::io::Error>,
+) {
+    let _ = std::error::Error::source(error);
+}

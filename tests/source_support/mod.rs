@@ -31,6 +31,7 @@ struct Dictionary {
     blanks: BTreeSet<u64>,
     // bounded: at most 16 literal records of at most 32 KiB each.
     literals: BTreeMap<u64, Arc<LiteralData>>,
+    wrong_container: bool,
     cancel: Arc<AtomicBool>,
 }
 impl Dictionary {
@@ -67,6 +68,9 @@ impl Fixture {
             },
             access: Access(dictionary),
         }
+    }
+    pub fn corrupt_container_classification(&mut self) {
+        self.store.dictionary.lock().unwrap().wrong_container = true;
     }
     pub fn iri(&mut self, iri: &str) -> u64 {
         let key = self.store.inner.iri(iri);
@@ -208,15 +212,26 @@ impl Rdf12ContainerAccess for Access {
         if iri.len() > maximum.get() as usize {
             return Err(io::Error::other("container IRI metadata budget exceeded"));
         }
+        if dictionary.wrong_container {
+            return Ok(Some(
+                Rdf12ContainerProperty::try_new(Arc::<str>::from(
+                    "http://www.w3.org/1999/02/22-rdf-syntax-ns#_1",
+                ))
+                .unwrap(),
+            ));
+        }
         Ok(Rdf12ContainerProperty::try_new(iri.clone()).ok())
     }
 }
 #[derive(Default)]
-pub struct Diagnostics(pub Vec<DatatypeConflict<u64>>);
+pub struct Diagnostics(pub Vec<DatatypeConflict<u64>>, pub bool);
 impl DatatypeConflictSink for Diagnostics {
     type Term = u64;
     type Error = io::Error;
     async fn record(&mut self, value: DatatypeConflict<u64>) -> io::Result<()> {
+        if self.1 {
+            return Err(io::Error::other("diagnostic sink failed"));
+        }
         assert!(self.0.len() < 100); // bounded: source fixture diagnostics explicitly capped at 100.
         self.0.push(value);
         Ok(())

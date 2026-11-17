@@ -2,7 +2,7 @@
 mod source_support;
 use inference_engine::reasoning::{
     DatatypeConflictLimits, LiteralTypingLimits, OccurrenceLimits, PropositionLimits, Rdfs12Source,
-    Rdfs12SourceConfig, Rdfs12SourceOutcome, RunLimits,
+    Rdfs12SourceConfig, Rdfs12SourceError, Rdfs12SourceOutcome, RunLimits,
 };
 use rdf_reasoning::Rdf12Datatype;
 use source_support::{Diagnostics, Fixture};
@@ -39,7 +39,7 @@ async fn prepares_inherited_membership_and_seeded_source_without_claiming_target
     };
     assert!(fixture.store.inner.inferred.contains(&[x, 1, b]));
     assert!(report.rounds >= 2);
-    assert!(report.seeded >= 57);
+    assert_eq!(report.seeded, 61);
     assert!(diagnostics.0.is_empty());
 }
 #[tokio::test]
@@ -136,4 +136,112 @@ async fn lexical_budget_read_and_cancellation_failures_never_prepare_partial_sou
                 .is_err()
         );
     }
+}
+
+#[tokio::test]
+async fn incomplete_rounds_and_container_identity_failure_cannot_prepare_source() {
+    let mut fixture = Fixture::new();
+    let mut limits = config();
+    limits.rounds = NonZeroU32::new(1).unwrap();
+    assert!(matches!(
+        Rdfs12Source::new(limits)
+            .run(
+                &mut fixture.store,
+                &fixture.access,
+                &mut Diagnostics::default()
+            )
+            .await,
+        Err(Rdfs12SourceError::Rounds)
+    ));
+    let mut fixture = Fixture::new();
+    let a = fixture.iri("urn:example:a");
+    let b = fixture.iri("urn:example:b");
+    let numbered = fixture.iri("http://www.w3.org/1999/02/22-rdf-syntax-ns#_937");
+    fixture.store.inner.asserted.insert([a, numbered, b]);
+    fixture.corrupt_container_classification();
+    assert!(matches!(
+        Rdfs12Source::new(config())
+            .run(
+                &mut fixture.store,
+                &fixture.access,
+                &mut Diagnostics::default()
+            )
+            .await,
+        Err(Rdfs12SourceError::VocabularyIdentity)
+    ));
+}
+#[tokio::test]
+async fn metadata_and_diagnostic_sink_failures_never_become_prepared_or_conflicting_success() {
+    let mut fixture = Fixture::new();
+    let mut limits = config();
+    limits.iri_bytes = NonZeroU32::new(1).unwrap();
+    assert!(matches!(
+        Rdfs12Source::new(limits)
+            .run(
+                &mut fixture.store,
+                &fixture.access,
+                &mut Diagnostics::default()
+            )
+            .await,
+        Err(Rdfs12SourceError::Vocabulary { .. })
+    ));
+    let mut fixture = Fixture::new();
+    let string = fixture.iri(Rdf12Datatype::String.iri());
+    let language = fixture.iri(Rdf12Datatype::LangString.iri());
+    fixture.store.inner.asserted.insert([string, 2, language]);
+    let mut diagnostics = Diagnostics(Vec::new(), true);
+    assert!(matches!(
+        Rdfs12Source::new(config())
+            .run(&mut fixture.store, &fixture.access, &mut diagnostics)
+            .await,
+        Err(Rdfs12SourceError::Conflicts(_))
+    ));
+}
+#[tokio::test]
+async fn assertions_retain_precedence_and_execution_values_round_trip_without_runtime_handles() {
+    let mut fixture = Fixture::new();
+    let rdf_type = fixture.iri("http://www.w3.org/1999/02/22-rdf-syntax-ns#type");
+    let property = fixture.iri("http://www.w3.org/1999/02/22-rdf-syntax-ns#Property");
+    let asserted = [rdf_type, 1, property];
+    fixture.store.inner.asserted.insert(asserted);
+    let result = Rdfs12Source::new(config())
+        .run(
+            &mut fixture.store,
+            &fixture.access,
+            &mut Diagnostics::default(),
+        )
+        .await
+        .unwrap();
+    assert!(!fixture.store.inner.inferred.contains(&asserted));
+    assert!(
+        fixture
+            .store
+            .inner
+            .evidence
+            .iter()
+            .all(|item| item.triple != asserted)
+    );
+    let Rdfs12SourceOutcome::Prepared(report) = result else {
+        panic!("unexpected conflict")
+    };
+    assert_eq!(report.seeded, 60);
+    assert_eq!(
+        serde_json::from_str::<Rdfs12SourceOutcome>(&serde_json::to_string(&result).unwrap())
+            .unwrap(),
+        result
+    );
+    assert_eq!(
+        postcard::from_bytes::<Rdfs12SourceOutcome>(&postcard::to_allocvec(&result).unwrap())
+            .unwrap(),
+        result
+    );
+    let config = config();
+    let encoded = serde_json::to_string(&config).unwrap();
+    assert!(
+        serde_json::from_str::<Rdfs12SourceConfig>(&encoded.replacen("{", "{\"unknown\":1,", 1))
+            .is_err()
+    );
+    let decoded: Rdfs12SourceConfig =
+        postcard::from_bytes(&postcard::to_allocvec(&config).unwrap()).unwrap();
+    assert_eq!(decoded.rounds, config.rounds);
 }
