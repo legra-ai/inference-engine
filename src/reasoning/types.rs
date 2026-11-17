@@ -1,7 +1,7 @@
-use super::LiteralOccurrence;
+use super::{LiteralOccurrence, TermOccurrence};
 use rdf_reasoning::{
     Exclusion, Preset, Rdf12AxiomId, Rdf12DatatypeConflictId, Rdf12ExistentialAxiomId,
-    Rdf12LiteralRuleId, Rdf12PropositionRuleId, RuleId,
+    Rdf12LiteralRuleId, Rdf12OccurrenceRuleId, Rdf12PropositionRuleId, RuleId,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -145,6 +145,13 @@ pub enum Evidence<T> {
         /// Exact validated lexical byte count; not a lexical value replacement.
         lexical_bytes: u64,
     },
+    /// A shared rule consumed a trusted structural occurrence, not an RDF assertion.
+    Occurrence {
+        /// Exact shared occurrence clause identity.
+        rule: Rdf12OccurrenceRuleId,
+        /// Original root, actual parent, path and source/target role.
+        occurrence: TermOccurrence<T>,
+    },
     /// A finite shared proposition constructor used three exact RDF premises.
     Proposition {
         /// Exact shared constructor identity.
@@ -205,6 +212,8 @@ pub enum ReasoningError<E> {
     UnsupportedPropositionRule(Rdf12PropositionRuleId),
     /// Shared datatype conflict has an unsupported diagnostic or premise shape.
     UnsupportedDatatypeConflict(Rdf12DatatypeConflictId),
+    /// Shared occurrence clause has an unsupported virtual-premise or head shape.
+    UnsupportedOccurrenceRule(Rdf12OccurrenceRuleId),
 }
 impl<E: fmt::Display> fmt::Display for ReasoningError<E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -226,6 +235,9 @@ impl<E: fmt::Display> fmt::Display for ReasoningError<E> {
             Self::UnsupportedAxiom => f.write_str("unsupported shared ground axiom definition"),
             Self::UnsupportedLiteralRule(rule) => {
                 write!(f, "unsupported shared literal rule definition: {rule:?}")
+            }
+            Self::UnsupportedOccurrenceRule(id) => {
+                write!(f, "unsupported occurrence rule definition: {id:?}")
             }
             Self::UnsupportedDatatypeConflict(id) => {
                 write!(f, "unsupported datatype conflict definition: {id:?}")

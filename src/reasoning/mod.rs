@@ -8,6 +8,7 @@ mod engine;
 mod literal;
 mod literal_typing;
 mod occurrence;
+mod occurrence_typing;
 mod plan;
 mod proposition;
 mod seeding;
@@ -27,6 +28,7 @@ pub use occurrence::{
     OccurrenceError, OccurrenceLimits, OccurrencePath, Rdf12OccurrenceCursor, TermOccurrence,
     TermPosition,
 };
+pub use occurrence_typing::{OccurrenceTypingError, OccurrenceTypingReport, Rdf12OccurrenceTyper};
 pub use proposition::{PropositionLimits, PropositionReport, Rdf12PropositionConstructor};
 pub use seeding::Rdf12AxiomSeeder;
 pub use types::{

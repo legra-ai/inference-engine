@@ -53,6 +53,8 @@ pub struct TermOccurrence<T> {
     pub term: T,
     /// Original selected root; nested triple contents are not asserted roots.
     pub root: [T; 3],
+    /// Actual enclosing triple; a nested parent is not an asserted RDF premise.
+    pub parent: [T; 3],
     /// Source and target appearances must remain separate capabilities.
     pub role: LiteralRole,
     /// Nonempty path through actual triple structure, never literal metadata.
@@ -168,6 +170,11 @@ where
             finished: false,
         }
     }
+    /// Explicit source/target role selected before any traversal I/O.
+    pub const fn role(&self) -> LiteralRole {
+        self.role
+    }
+
     /// Emit one actual appearance, revisiting repeated keys at distinct paths.
     ///
     /// # Errors
@@ -199,6 +206,7 @@ where
                 self.frames.pop();
                 continue;
             }
+            let parent = frame.triple.clone();
             let term = frame.triple[usize::from(frame.next)].clone();
             frame.next += 1;
             if self.occurrences == self.limits.occurrences.get() {
@@ -230,6 +238,7 @@ where
             self.occurrences += 1;
             return Ok(Some(TermOccurrence {
                 term,
+                parent,
                 root: self.root.clone().expect("selected root exists"),
                 role: self.role,
                 path,

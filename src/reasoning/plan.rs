@@ -1,8 +1,10 @@
+mod occurrence;
 use super::{ReasoningError, ReasoningStore};
 use datalog_structural_model::{Atom, Literal, Term, VariableSymbol};
+pub(super) use occurrence::OccurrenceClause;
 use rdf_reasoning::{
     RDF12_LITERAL_DATATYPE_RELATION, Rdf12DatatypeConflictId, Rdf12LiteralRuleId,
-    Rdf12PropositionRuleId, RuleId, TRIPLE_RELATION,
+    Rdf12OccurrenceRuleId, Rdf12PropositionRuleId, RuleId, TRIPLE_RELATION,
 };
 
 const VARIABLES: usize = 6;
@@ -19,6 +21,7 @@ enum DefinitionId {
     Literal(Rdf12LiteralRuleId),
     Proposition(Rdf12PropositionRuleId),
     Conflict(Rdf12DatatypeConflictId),
+    Occurrence(Rdf12OccurrenceRuleId),
 }
 impl DefinitionId {
     fn error<E>(self) -> ReasoningError<E> {
@@ -27,6 +30,7 @@ impl DefinitionId {
             Self::Literal(id) => ReasoningError::UnsupportedLiteralRule(id),
             Self::Proposition(id) => ReasoningError::UnsupportedPropositionRule(id),
             Self::Conflict(id) => ReasoningError::UnsupportedDatatypeConflict(id),
+            Self::Occurrence(id) => ReasoningError::UnsupportedOccurrenceRule(id),
         }
     }
 }
