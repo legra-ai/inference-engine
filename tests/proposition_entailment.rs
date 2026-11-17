@@ -171,3 +171,69 @@ async fn repeated_triple_terms_share_one_consistent_target_binding() {
         .await
     );
 }
+
+#[tokio::test]
+async fn target_construction_respects_outer_bindings_without_typing_target_predicates() {
+    let mut store = Store::new([[10, 20, 31]]);
+    let property = store.iri("http://www.w3.org/1999/02/22-rdf-syntax-ns#Property");
+    let prop = store.iri("http://www.w3.org/2000/01/rdf-schema#Proposition");
+    store.asserted.insert([32, TYPE, property]);
+    let mut terms = Terms {
+        quoted: BTreeMap::from([(91, [41, 32, 33]), (92, [41, 22, 33])]),
+    };
+    let target = [[10, 20, 41], [91, TYPE, prop]];
+    let negative = [[10, 20, 41], [92, TYPE, prop]];
+    assert!(!match_target(&mut store, &terms, &target).await);
+    let roots = store
+        .snapshot()
+        .await
+        .unwrap()
+        .scan([None; 3])
+        .await
+        .unwrap();
+    let mut source = Rdf12OccurrenceCursor::new(
+        roots,
+        &terms,
+        LiteralRole::Source,
+        OccurrenceLimits::new(NonZeroU32::new(3).unwrap(), n(100), n(1000)),
+    );
+    Rdf12OccurrenceTyper::new(n(100), LiteralRole::Source)
+        .run(&mut store, &mut source)
+        .await
+        .unwrap();
+    // Source consistency belongs before this target-relative augmentation.
+    // Only universal resource consequences are admitted; target roots are not assertions.
+    let roots = Store::new(target.into_iter().chain(negative))
+        .snapshot()
+        .await
+        .unwrap()
+        .scan([None; 3])
+        .await
+        .unwrap();
+    let mut context = Rdf12OccurrenceCursor::new(
+        roots,
+        &terms,
+        LiteralRole::TargetContext,
+        OccurrenceLimits::new(NonZeroU32::new(3).unwrap(), n(100), n(1000)),
+    );
+    Rdf12OccurrenceTyper::new(n(100), LiteralRole::TargetContext)
+        .run(&mut store, &mut context)
+        .await
+        .unwrap();
+    assert!(!store.inferred.contains(&[22, TYPE, property]));
+    assert!(!match_target(&mut store, &terms, &target).await);
+    Rdf12PropositionConstructor::new(PropositionLimits::new(n(512), n(10_000)))
+        .run(&mut store)
+        .await
+        .unwrap();
+    // bounded: this fixture's constructor dictionary has a hard cap of 512 entries.
+    for (triple, key) in &store.constructed {
+        terms.quoted.insert(*key, *triple);
+    }
+    assert!(store.constructed.contains_key(&[31, 32, 33]));
+    assert!(!store.constructed.contains_key(&[31, 22, 33]));
+    assert!(match_target(&mut store, &terms, &target).await);
+    assert!(!match_target(&mut store, &terms, &negative).await);
+    assert!(!store.asserted.contains(&[31, 32, 33]));
+    assert!(!store.inferred.contains(&[31, 32, 33]));
+}
