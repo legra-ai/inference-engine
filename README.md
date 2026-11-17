@@ -14,15 +14,21 @@ The first alpha compiles named `rdf-reasoning` profiles into checked portable
 Datalog programs and reports their explicit exclusions. Rust, Python and Node.js
 use the same Rust implementation and published semantic dependencies.
 
-Rust also provides bounded forward execution of the explicit `rdfs-subclass`
-profile: subclass transitivity (`rdfs11`) and inherited membership (`rdfs9`).
-The executor evaluates the definitions from `rdf-reasoning`; callers supply
-asynchronous database scans, indexed membership probes and scratch storage.
-See [the storage adapter contract](docs/rdfs-subclass.md).
+The Rust API executes the explicit `rdfs-subclass` profile (shared rules `rdfs9`
+and `rdfs11`) and `rdfs-core` (fourteen shared RDF/RDFS clauses). Callers supply
+asynchronous database scans, indexed probes and scratch storage. Separate bounded
+APIs seed RDF 1.2 ground axioms and scoped blank witnesses, validate streamed literal payloads, execute shared
+default-map literal and recursive occurrence clauses, construct finite proposition
+terms, report
+source-only default datatype conflicts and check simple source-to-target entailment
+with nested blank-node substitution. See [the adapter and execution contracts](docs/rdfs-subclass.md).
 
-The other named profiles are **compile-only**. Full RDFS/OWL-RL, arbitrary Datalog
-execution and SHACL inference are not implemented. Python and Node currently
-expose profile inspection; executable storage adapters use the Rust API.
+**Full RDFS 1.2 entailment is in development.** Complete consistency checking,
+adequate target-relevant construction and the integrated entailment procedure
+remain outstanding. The development order is RDFS 1.2, OWL-RL,
+general Datalog, then SHACL 1.2 reasoning. The other named profiles currently
+support compilation and inspection. Python and Node expose profile inspection;
+the executable storage-adapter APIs are Rust-only.
 
 ```rust
 let profile = inference_engine::compile_profile("rdfs-core")?;
@@ -45,6 +51,15 @@ Unsupported selectors fail; full `owl2-rl` is not an alias for a restricted prof
 Python requires 3.11+; Node.js requires 22+. Native artifacts target Linux glibc
 x64/arm64, macOS x64/arm64, and Windows x64. No Python or JavaScript evaluator is
 used when the native module is missing.
+
+## Conformance evidence
+
+The packaged tests include a pinned W3C RDF 1.2 semantics manifest and fixtures
+with original hashes and license notices. The simple-entailment harness passes
+18 cases; it explicitly reports the case requesting `xsd:integer` value
+comparison as unsupported. Stronger RDF/RDFS regimes and inherited RDF 1.1
+semantic tests are not counted as passing by that harness. This is measured
+partial coverage, not full RDF 1.2 or RDFS conformance.
 
 ## Development and releases
 

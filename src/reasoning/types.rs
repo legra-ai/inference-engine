@@ -1,4 +1,8 @@
-use rdf_reasoning::RuleId;
+use super::{LiteralOccurrence, TermOccurrence};
+use rdf_reasoning::{
+    Exclusion, Preset, Rdf12AxiomId, Rdf12DatatypeConflictId, Rdf12ExistentialAxiomId,
+    Rdf12LiteralRuleId, Rdf12OccurrenceRuleId, Rdf12PropositionRuleId, RuleId,
+};
 use serde::{Deserialize, Serialize};
 use std::{
     error::Error,
@@ -13,20 +17,34 @@ pub enum ExecutionProfile {
     /// Only subclass transitivity and inherited membership, no axioms or other rules.
     #[serde(rename = "rdfs-subclass")]
     RdfsSubclass,
+    /// Fourteen shared RDF/RDFS rules, without axioms or datatype processing.
+    #[serde(rename = "rdfs-core")]
+    RdfsCore,
 }
 
 impl ExecutionProfile {
     /// Stable profile name; this is not full RDFS support.
     pub const fn name(self) -> &'static str {
-        "rdfs-subclass"
+        self.preset().name()
     }
     /// Profile definition revision, independent of package implementation version.
     pub const fn revision(self) -> u32 {
         1
     }
-    /// Exact rule identities from `rdf-reasoning` 2.6.0, in execution order.
-    pub const fn rules(self) -> &'static [RuleId; 2] {
-        &[RuleId::Rdfs9, RuleId::Rdfs11]
+    /// Shared semantic selection, independent of this executor's implementation.
+    pub const fn preset(self) -> Preset {
+        match self {
+            Self::RdfsSubclass => Preset::RdfsSubclass,
+            Self::RdfsCore => Preset::RdfsCore,
+        }
+    }
+    /// Exact rule identities from the shared catalogue, in execution order.
+    pub const fn rules(self) -> &'static [RuleId] {
+        self.preset().rules()
+    }
+    /// Obligations deliberately excluded by the shared semantic selection.
+    pub const fn exclusions(self) -> &'static [Exclusion] {
+        self.preset().exclusions()
     }
 }
 
@@ -35,6 +53,7 @@ impl FromStr for ExecutionProfile {
     fn from_str(value: &str) -> Result<Self, Self::Err> {
         match value {
             "rdfs-subclass" => Ok(Self::RdfsSubclass),
+            "rdfs-core" => Ok(Self::RdfsCore),
             _ => Err(ProfileError(value.to_owned())),
         }
     }
@@ -70,16 +89,86 @@ impl RunLimits {
     }
 }
 
-/// One novel tuple and a two-premise witness from the selected shared rule.
+/// Exact bounded witness arity, without invented or repeated premise tuples.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub enum Premises<T> {
+    /// A unary rule used one matching body tuple.
+    One([T; 3]),
+    /// A join rule used two matching body tuples in shared definition order.
+    Two([[T; 3]; 2]),
+}
+impl<T> Premises<T> {
+    /// Iterate matching body tuples in rule order, preserving exact arity.
+    pub fn iter(&self) -> std::slice::Iter<'_, [T; 3]> {
+        match self {
+            Self::One(tuple) => std::slice::from_ref(tuple).iter(),
+            Self::Two(tuples) => tuples.iter(),
+        }
+    }
+}
+impl<T> From<[[T; 3]; 2]> for Premises<T> {
+    fn from(tuples: [[T; 3]; 2]) -> Self {
+        Self::Two(tuples)
+    }
+}
+
+/// Standard axiom authority; the inference tuple supplies the exact ground identity.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub enum AxiomFamily {
+    /// A finite family from RDF 1.2 Semantics CRD 2026-09-24.
+    Rdf12(Rdf12AxiomId),
+    /// A checked canonical container IRI's RDF/RDFS vocabulary axioms.
+    Rdf12Container,
+    /// Nonempty-class requirement, realized by a fresh scoped blank witness.
+    Rdf12Existential(Rdf12ExistentialAxiomId),
+}
+
+/// Exact derivation authority, distinguishing premises from ground axioms.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub enum Evidence<T> {
+    /// A shared rule fired on these exact body tuples.
+    Rule {
+        /// Catalogue rule identity.
+        rule: RuleId,
+        /// Body tuples in shared definition order.
+        premises: Premises<T>,
+    },
+    /// A ground standard axiom has no rule premises.
+    Axiom(AxiomFamily),
+    /// A shared literal-typing clause consumed validated semantic metadata.
+    Literal {
+        /// Exact parameterized shared clause identity.
+        rule: Rdf12LiteralRuleId,
+        /// Original selected root and literal key, including source/target role.
+        occurrence: LiteralOccurrence<T>,
+        /// Exact validated lexical byte count; not a lexical value replacement.
+        lexical_bytes: u64,
+    },
+    /// A shared rule consumed a trusted structural occurrence, not an RDF assertion.
+    Occurrence {
+        /// Exact shared occurrence clause identity.
+        rule: Rdf12OccurrenceRuleId,
+        /// Original root, actual parent, path and source/target role.
+        occurrence: TermOccurrence<T>,
+    },
+    /// A finite shared proposition constructor used three exact RDF premises.
+    Proposition {
+        /// Exact shared constructor identity.
+        rule: Rdf12PropositionRuleId,
+        /// Property, subject-resource and object-resource evidence in definition order.
+        premises: [[T; 3]; 3],
+    },
+}
+
+/// One novel tuple and its exact derivation authority.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Inference<T> {
     /// Derived subject, predicate and object, preserving caller term identity.
     pub triple: [T; 3],
-    /// Rule that produced this witness.
-    pub rule: RuleId,
-    /// Matching body tuples in shared rule order; either can itself be inferred.
-    pub premises: [[T; 3]; 2],
+    /// Rule and premise witness, or explicit standard axiom family.
+    pub evidence: Evidence<T>,
 }
 
 /// Completed work counters; returned only after successful fixpoint detection.
@@ -109,17 +198,32 @@ pub enum Limit {
 pub enum ReasoningError<E> {
     /// Fallible backend read, resolution or write failed.
     Storage(E),
+    /// Backend returned a tuple outside an exact requested premise probe.
+    InvalidProbe,
     /// Caller cancelled or superseded the attempt.
     Cancelled,
     /// Explicit budget prevented complete closure.
     LimitExceeded(Limit),
-    /// Pinned shared rule no longer has the supported flat two-body form.
+    /// Shared rule does not have a supported flat one- or two-body form.
     UnsupportedRule(RuleId),
+    /// A shared axiom is not an empty-body ground triple of IRI constants.
+    UnsupportedAxiom,
+    /// A shared literal clause does not have the admitted metadata-premise shape.
+    UnsupportedLiteralRule(Rdf12LiteralRuleId),
+    /// Shared proposition constructor has an unsupported body or head shape.
+    UnsupportedPropositionRule(Rdf12PropositionRuleId),
+    /// Shared datatype conflict has an unsupported diagnostic or premise shape.
+    UnsupportedDatatypeConflict(Rdf12DatatypeConflictId),
+    /// Shared occurrence clause has an unsupported virtual-premise or head shape.
+    UnsupportedOccurrenceRule(Rdf12OccurrenceRuleId),
 }
 impl<E: fmt::Display> fmt::Display for ReasoningError<E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Storage(error) => write!(f, "reasoning storage failed: {error}"),
+            Self::InvalidProbe => {
+                f.write_str("reasoning snapshot returned a row outside an exact probe")
+            }
             Self::Cancelled => f.write_str("reasoning cancelled"),
             Self::LimitExceeded(limit) => write!(
                 f,
@@ -132,6 +236,19 @@ impl<E: fmt::Display> fmt::Display for ReasoningError<E> {
             ),
             Self::UnsupportedRule(rule) => {
                 write!(f, "unsupported shared rule definition: {rule:?}")
+            }
+            Self::UnsupportedAxiom => f.write_str("unsupported shared ground axiom definition"),
+            Self::UnsupportedLiteralRule(rule) => {
+                write!(f, "unsupported shared literal rule definition: {rule:?}")
+            }
+            Self::UnsupportedOccurrenceRule(id) => {
+                write!(f, "unsupported occurrence rule definition: {id:?}")
+            }
+            Self::UnsupportedDatatypeConflict(id) => {
+                write!(f, "unsupported datatype conflict definition: {id:?}")
+            }
+            Self::UnsupportedPropositionRule(rule) => {
+                write!(f, "unsupported proposition rule definition: {rule:?}")
             }
         }
     }

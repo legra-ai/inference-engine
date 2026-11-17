@@ -1,129 +1,9 @@
 //! Executable two-rule RDFS contract against a bounded test-only store.
 
-use inference_engine::reasoning::{
-    ExecutionProfile, Inference, Reasoner, ReasoningStore, RunLimits, TripleCursor, TripleSource,
-};
-use std::{
-    collections::BTreeSet,
-    io,
-    num::{NonZeroU32, NonZeroU64},
-};
-
-const TYPE: u64 = 1;
-const SUBCLASS: u64 = 2;
-type Triple = [u64; 3];
-
-struct Cursor(std::vec::IntoIter<Triple>, bool);
-
-impl TripleCursor for Cursor {
-    type Term = u64;
-    type Error = io::Error;
-    async fn next(&mut self) -> io::Result<Option<Triple>> {
-        let next = self.0.next();
-        if next.is_none() && self.1 {
-            return Err(io::Error::other("cursor failed after rows"));
-        }
-        Ok(next)
-    }
-}
-
-struct Snapshot(BTreeSet<Triple>, bool);
-
-impl TripleSource for Snapshot {
-    type Term = u64;
-    type Error = io::Error;
-    type Cursor = Cursor;
-    async fn scan(&self, pattern: [Option<u64>; 3]) -> io::Result<Cursor> {
-        // bounded: these test fixtures contain fewer than thirty triples.
-        Ok(Cursor(
-            self.0
-                .iter()
-                .filter(|triple| {
-                    pattern
-                        .iter()
-                        .zip(triple.iter())
-                        .all(|(p, t)| p.is_none_or(|p| p == *t))
-                })
-                .copied()
-                .collect::<Vec<_>>()
-                .into_iter(),
-            self.1,
-        ))
-    }
-}
-
-#[derive(Default)]
-struct Store {
-    asserted: BTreeSet<Triple>,
-    inferred: BTreeSet<Triple>,
-    evidence: Vec<Inference<u64>>,
-    cancelled: bool,
-    fail_read: bool,
-    fail_write: bool,
-    fail_cursor: bool,
-    fail_after_writes: Option<usize>,
-}
-
-impl Store {
-    fn new(asserted: impl IntoIterator<Item = Triple>) -> Self {
-        // bounded: these test fixtures contain fewer than thirty triples.
-        Self {
-            asserted: asserted.into_iter().collect(),
-            ..Self::default()
-        }
-    }
-}
-
-impl ReasoningStore for Store {
-    type Term = u64;
-    type Error = io::Error;
-    type Snapshot = Snapshot;
-    async fn resolve_iri(&mut self, iri: &str) -> io::Result<u64> {
-        match iri {
-            "http://www.w3.org/1999/02/22-rdf-syntax-ns#type" => Ok(TYPE),
-            "http://www.w3.org/2000/01/rdf-schema#subClassOf" => Ok(SUBCLASS),
-            _ => Err(io::Error::other("unexpected rule constant")),
-        }
-    }
-    async fn snapshot(&mut self) -> io::Result<Snapshot> {
-        if self.fail_read {
-            return Err(io::Error::other("read failed"));
-        }
-        // bounded: these test fixtures contain fewer than thirty triples.
-        Ok(Snapshot(
-            self.asserted.union(&self.inferred).copied().collect(),
-            self.fail_cursor,
-        ))
-    }
-    async fn contains(&mut self, triple: &Triple) -> io::Result<bool> {
-        Ok(self.asserted.contains(triple) || self.inferred.contains(triple))
-    }
-    async fn insert_inferred(&mut self, inference: Inference<u64>) -> io::Result<bool> {
-        if self.fail_write || self.fail_after_writes == Some(self.evidence.len()) {
-            return Err(io::Error::other("write failed"));
-        }
-        if self.asserted.contains(&inference.triple) {
-            return Ok(false);
-        }
-        let inserted = self.inferred.insert(inference.triple);
-        if inserted {
-            // bounded: these test fixtures contain fewer than thirty consequences.
-            self.evidence.push(inference);
-        }
-        Ok(inserted)
-    }
-    fn is_cancelled(&self) -> bool {
-        self.cancelled
-    }
-}
-
-fn limits(inferred: u64, rounds: u32, matches: u64) -> RunLimits {
-    RunLimits::new(
-        NonZeroU32::new(rounds).unwrap(),
-        NonZeroU64::new(inferred).unwrap(),
-        NonZeroU64::new(matches).unwrap(),
-    )
-}
+mod support;
+use inference_engine::reasoning::{Evidence, ExecutionProfile, Inference, Reasoner, RunLimits};
+use std::collections::BTreeSet;
+use support::{SUBCLASS, Store, TYPE, limits};
 
 fn reasoner() -> Reasoner {
     Reasoner::new(ExecutionProfile::RdfsSubclass, limits(100, 20, 10_000))
@@ -140,8 +20,10 @@ async fn derives_transitive_subclasses_and_inherited_membership() {
     assert_eq!(report.inferred, 3);
     assert_eq!(store.asserted.len(), 3);
     assert!(store.evidence.iter().all(|evidence| {
-        evidence
-            .premises
+        let Evidence::Rule { premises, .. } = &evidence.evidence else {
+            return false;
+        };
+        premises
             .iter()
             .all(|p| store.asserted.contains(p) || store.inferred.contains(p))
     }));
@@ -200,8 +82,10 @@ async fn exact_output_limit_can_still_prove_fixpoint_and_empty_input_is_valid() 
 fn portable_execution_values_round_trip_without_a_json_intermediate() {
     let evidence = Inference {
         triple: [10, SUBCLASS, 12],
-        rule: rdf_reasoning::RuleId::Rdfs11,
-        premises: [[10, SUBCLASS, 11], [11, SUBCLASS, 12]],
+        evidence: Evidence::Rule {
+            rule: rdf_reasoning::RuleId::Rdfs11,
+            premises: [[10, SUBCLASS, 11], [11, SUBCLASS, 12]].into(),
+        },
     };
     let json = serde_json::to_vec(&evidence).unwrap();
     assert_eq!(
@@ -221,7 +105,7 @@ fn portable_execution_values_round_trip_without_a_json_intermediate() {
         )
         .is_err()
     );
-    assert!(serde_json::from_str::<Inference<u64>>(r#"{"triple":[10,2,12],"rule":"rdfs11","premises":[[10,2,11],[11,2,12]],"source":"ignored"}"#).is_err());
+    assert!(serde_json::from_str::<Inference<u64>>(r#"{"triple":[10,2,12],"evidence":{"Rule":{"rule":"rdfs11","premises":{"Two":[[10,2,11],[11,2,12]]}}},"source":"ignored"}"#).is_err());
 }
 
 #[tokio::test]
@@ -275,7 +159,7 @@ fn unsupported_profiles_are_not_silently_weakened() {
         "rdfs-subclass".parse::<ExecutionProfile>().unwrap(),
         ExecutionProfile::RdfsSubclass
     );
-    for name in ["rdfs-core", "rdfs", "owl2-rl", "isSubclassOf"] {
+    for name in ["rdfs", "owl2-rl", "isSubclassOf"] {
         assert!(name.parse::<ExecutionProfile>().is_err());
     }
     assert_eq!(

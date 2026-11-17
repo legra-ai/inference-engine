@@ -1,0 +1,2 @@
+# W3C fixtures are unmodified, hash-pinned upstream bytes on every platform.
+tests/fixtures/rdf12-semantics/*.ttl -text

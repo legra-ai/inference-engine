@@ -1,0 +1,19 @@
+Copyright © 2004-2026 World Wide Web Consortium and contributors.
+
+Unmodified Turtle fixtures and manifest from:
+https://github.com/w3c/rdf-tests/tree/7b5afb91857a9c282c03d2e45d3f76485797c901/rdf/rdf12/rdf-semantics
+
+Distributed under the W3C 3-clause BSD License; see LICENSE for its full
+conditions and disclaimer and the alternative W3C Test Suite License.
+LICENSE.md is the upstream repository's original license pointer.
+
+provenance.json records the exact upstream commit and original fixture hashes.
+Approval/status labels remain unchanged in manifest.ttl. These draft tests are
+not a certification or endorsement by W3C.
+
+The current Rust harness executes 18 simple-entailment cases without additional
+datatype recognition. It explicitly reports the remaining simple case
+(opaque-literal, which requests xsd:integer value comparison) as unsupported.
+RDF/RDFS cases and its included RDF 1.1 suite are retained coverage obligations;
+they are not counted as passing by this harness. The parser is test-only and
+does not supply a secondary reasoning implementation.

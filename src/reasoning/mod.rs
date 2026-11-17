@@ -1,15 +1,40 @@
-//! Bounded forward execution of the shared `rdfs9` and `rdfs11` clauses.
+//! Bounded forward execution of shared positive RDF/RDFS structural clauses.
 //!
 //! Callers own immutable selected input, indexed scratch storage and publication.
 //! This module never collects a graph, chooses graphs, or promotes partial output.
 
+mod conflict;
 mod engine;
+mod literal;
+mod literal_typing;
+mod occurrence;
+mod occurrence_typing;
 mod plan;
+mod proposition;
+mod seeding;
 mod types;
 
+pub use conflict::{
+    DatatypeConflict, DatatypeConflictError, DatatypeConflictLimits, DatatypeConflictReport,
+    DatatypeConflictSink, Rdf12DatatypeConflictChecker,
+};
 pub use engine::Reasoner;
+pub use literal::{LiteralError, LiteralReader, LiteralReport, Rdf12LiteralValidator};
+pub use literal_typing::{
+    LiteralCursorError, LiteralOccurrence, LiteralOccurrenceCursor, LiteralOccurrenceRead,
+    LiteralRole, LiteralTermAccess, LiteralTypingError, LiteralTypingLimits, LiteralTypingReport,
+    Rdf12LiteralOccurrences, Rdf12LiteralTyper,
+};
+pub use occurrence::{
+    OccurrenceError, OccurrenceLimits, OccurrencePath, Rdf12OccurrenceCursor, TermOccurrence,
+    TermPosition,
+};
+pub use occurrence_typing::{OccurrenceTypingError, OccurrenceTypingReport, Rdf12OccurrenceTyper};
+pub use proposition::{PropositionLimits, PropositionReport, Rdf12PropositionConstructor};
+pub use seeding::Rdf12AxiomSeeder;
 pub use types::{
-    ExecutionProfile, Inference, Limit, ProfileError, ReasoningError, RunLimits, RunReport,
+    AxiomFamily, Evidence, ExecutionProfile, Inference, Limit, Premises, ProfileError,
+    ReasoningError, RunLimits, RunReport,
 };
 
 use std::{error::Error, future::Future};
@@ -48,7 +73,8 @@ pub trait TripleSource: Send + Sync {
 /// Backend capabilities for one fresh, isolated inference attempt.
 ///
 /// Initially expose only the caller's selected asserted snapshot, never earlier
-/// inferred output. Scratch facts must spill to caller-owned indexed storage;
+/// inferred output. Explicit axiom seeding may precede rule execution within
+/// the same fresh attempt. Scratch facts must spill to caller-owned indexed storage;
 /// no method may buffer a graph-sized relation. Each snapshot freezes the union
 /// as of its creation; subsequent insertions are visible in the next snapshot.
 ///
@@ -86,4 +112,33 @@ pub trait ReasoningStore: Send {
     /// Whether this attempt is cancelled/superseded. Awaited operations must also
     /// support cancellation through the backend's own error/control boundary.
     fn is_cancelled(&self) -> bool;
+}
+
+/// Caller-owned fresh blank allocation for standard nonempty-class requirements.
+///
+/// Keep bindings in the isolated attempt's storage, keyed by semantic descriptor
+/// and immutable scope. Allocation is independent of lexical representatives or
+/// user-visible IRI minting; unsupported blank allocation must fail explicitly.
+pub trait Rdf12WitnessStore: ReasoningStore {
+    /// Resolve one fresh scoped RDF blank witness, reusing the persisted key for
+    /// repeated calls with the same descriptor in this attempt. Standardize it
+    /// apart from input and target blanks and witnesses in different attempts.
+    /// Never return a fixed user IRI, Skolem IRI or chosen literal value.
+    fn resolve_existential_blank(
+        &mut self,
+        id: rdf_reasoning::Rdf12ExistentialAxiomId,
+    ) -> impl Future<Output = Result<Self::Term, Self::Error>> + Send;
+}
+
+/// Explicit generalized triple-term construction in the caller's dictionary.
+pub trait Rdf12TripleTermStore: ReasoningStore {
+    /// Resolve a canonical subject/predicate/object triple term without asserting
+    /// its contents. Preserve generalized keys, including literal predicates.
+    /// Enforce actual substituted nesting and dictionary/resource limits here.
+    /// Unsupported terms or exhausted limits must return an error, never a
+    /// coerced term, omitted fact or alternate IRI representation.
+    fn resolve_triple_term(
+        &mut self,
+        triple: [Self::Term; 3],
+    ) -> impl Future<Output = Result<Self::Term, Self::Error>> + Send;
 }

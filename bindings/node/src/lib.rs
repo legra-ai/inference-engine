@@ -9,7 +9,7 @@ pub fn compile_profile(selector: String) -> napi::Result<String> {
 
 #[napi]
 pub fn profiles() -> Vec<String> {
-    // bounded: the shared catalogue has five named presets, no graph data.
+    // bounded: the built-in profile catalogue is finite and independent of graph size.
     inference_engine::profiles().map(str::to_owned).collect()
 }
 

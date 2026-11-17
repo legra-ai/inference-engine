@@ -24,20 +24,26 @@ documentation = "https://docs.rs/inference-engine"
 keywords = ["rdf", "rdfs", "owl", "datalog", "reasoning"]
 categories = ["science", "data-structures"]
 build = "build.rs"
-include = ["Cargo.toml", "Cargo.lock", "README.md", "LICENSE-APACHE", "LICENSE-MIT", "src/**/*.rs", "tests/*.rs", "docs/rdfs-subclass.md"]
+include = ["Cargo.toml", "Cargo.lock", "build.rs", "build_support.rs", "README.md", "LICENSE-APACHE", "LICENSE-MIT", "src/**/*.rs", "tests/**", "docs/rdfs-subclass.md"]
 
 [dependencies]
-datalog-structural-model = "=3.0.0"
-rdf-reasoning = "=2.6.4"
+datalog-structural-model = "=3.0.4"
+rdf-reasoning = "=2.15.0"
+rdf-structural-model = "=0.4.0"
 serde = { version = "1", features = ["derive"] }
 
 [build-dependencies]
 rhusky = "=2.0.8"
+toml = "1.2.1"
 
 [dev-dependencies]
 serde_json = "1"
 postcard = { version = "1", features = ["alloc"] }
-tokio = { version = "1.54.1", features = ["macros", "rt"] }
+tokio = { version = "1.54.1", features = ["macros", "rt", "fs"] }
+oxttl = { version = "=0.2.5", features = ["rdf-12"] }
+oxrdf = { version = "=0.3.5", features = ["rdf-12"] }
+sha2 = "0.10"
+toml = "1.2.1"
 
 [package.metadata.version-info]
 pre_bump_hooks = ["python3 scripts/sync-version.py {{version}}"]
