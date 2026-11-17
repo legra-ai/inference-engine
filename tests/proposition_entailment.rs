@@ -23,7 +23,7 @@ impl EntailmentTerms for Terms {
     type Term = u64;
     type Error = io::Error;
     async fn is_blank(&self, key: &u64) -> io::Result<bool> {
-        Ok([31, 41, 42].contains(key))
+        Ok([31, 41, 42, 43].contains(key))
     }
     async fn triple_term(&self, key: &u64) -> io::Result<Option<[u64; 3]>> {
         Ok(self.quoted.get(key).copied())
@@ -52,6 +52,7 @@ fn fixture(nested: bool) -> (Store, Terms, u64) {
             (92, [90, 22, 31]),
             (93, [91, 22, 41]),
             (94, [91, 22, 35]),
+            (95, [42, 22, 41]),
         ]),
     };
     (store, terms, proposition)
@@ -118,6 +119,21 @@ async fn nested_proposition_membership_preserves_mixed_outer_and_inner_blank_map
     assert!(match_target(&mut store, &terms, &target).await);
     assert!(!match_target(&mut store, &terms, &[[10, 20, 93], [41, 21, 99]]).await);
     assert!(!match_target(&mut store, &terms, &[[10, 20, 94]]).await);
+    // The RDFS nested abstraction pattern replaces inner and outer terms separately.
+    assert!(
+        match_target(
+            &mut store,
+            &terms,
+            &[
+                [10, 20, 95],
+                [10, 20, 43],
+                [42, TYPE, prop],
+                [43, TYPE, prop],
+                [41, 21, 34],
+            ]
+        )
+        .await
+    );
     for triple in [[31, 32, 33], [90, 22, 31]] {
         assert!(!store.asserted.contains(&triple));
         assert!(!store.inferred.contains(&triple));
