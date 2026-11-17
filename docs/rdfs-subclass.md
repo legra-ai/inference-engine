@@ -103,8 +103,27 @@ implementation.
 `rdf-reasoning` using the same bounded pattern compiler and binder as the
 structural executor. Its `LiteralOccurrenceCursor` streams a selected literal
 key, its root triple, semantic role and an owned immutable `LiteralReader`.
-Adapters must enumerate direct and recursively appearing literals in the chosen
-context, retaining input-snapshot and logical-source-graph provenance.
+Adapters may supply their own direct/recursive literal cursor, retaining
+input-snapshot and logical-source-graph provenance. `Rdf12LiteralOccurrences`
+provides the native traversal: implement `LiteralTermAccess` alongside
+`EntailmentTerms`, select an immutable root cursor and explicit occurrence limits,
+and the engine opens one literal reader at a time. Associated reader lifetimes
+permit borrowed metadata and lexical slices or independent backend handles;
+neither a whole lexical clone nor a dictionary/graph collection is required.
+
+Each `LiteralOccurrence` retains its exact nonempty path as well as literal key,
+root and role. Repeated keys at different paths remain distinct inspections.
+Metadata datatype IRIs are not visited as actual terms. Opening must not buffer
+the lexical payload; cache misses load authoritative classification/metadata or
+fail. The reader then streams payload bytes through the existing validator.
+
+`LiteralOccurrenceRead` distinguishes custom storage failures, native traversal
+failures and literal-opening failures. `LiteralCursorError::Open` retains the
+actual root, parent, path and role even when no payload reader could be opened.
+`LiteralTypingError::Cursor` preserves that distinction. Backend failures and
+late cursor errors must never become successful EOF or opaque nonliteral terms.
+Borrowed term identities also retain the standard error-source contract without
+requiring allocation or a static lifetime.
 
 The typer validates metadata and streams the entire UTF-8 payload before
 binding the auxiliary metadata relation. That relation is a distinct capability:

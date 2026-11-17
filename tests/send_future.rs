@@ -72,3 +72,10 @@ fn occurrence_typing_future_is_send<S, A, C>(
 {
     require_send(typer.run(store, cursor));
 }
+
+#[allow(dead_code)]
+fn borrowed_literal_error_retains_error_source(
+    error: &inference_engine::reasoning::LiteralTypingError<&str, std::io::Error>,
+) {
+    let _ = std::error::Error::source(error);
+}

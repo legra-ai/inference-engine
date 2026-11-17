@@ -32,7 +32,7 @@ pub struct LiteralOccurrence<T> {
     pub path: OccurrencePath,
 }
 
-/// A fallible cursor step containing one occurrence and owned payload reader.
+/// A fallible cursor step containing one occurrence and independently advanced reader.
 pub type LiteralOccurrenceRead<T, R, E> =
     Result<Option<(LiteralOccurrence<T>, R)>, LiteralCursorError<T, E>>;
 
