@@ -1,5 +1,7 @@
+mod cursor;
 mod engine;
-use super::{LiteralError, LiteralReader, ReasoningError};
+use super::{LiteralError, LiteralReader, OccurrencePath, ReasoningError};
+pub use cursor::{LiteralCursorError, LiteralTermAccess, Rdf12LiteralOccurrences};
 pub use engine::Rdf12LiteralTyper;
 use serde::{Deserialize, Serialize};
 use std::{error::Error, fmt, future::Future, num::NonZeroU64};
@@ -26,10 +28,13 @@ pub struct LiteralOccurrence<T> {
     pub root: [T; 3],
     /// Semantic phase owning this occurrence.
     pub role: LiteralRole,
+    /// Exact direct or nested position within the selected root.
+    pub path: OccurrencePath,
 }
 
 /// A fallible cursor step containing one occurrence and owned payload reader.
-pub type LiteralOccurrenceRead<T, R, E> = Result<Option<(LiteralOccurrence<T>, R)>, E>;
+pub type LiteralOccurrenceRead<T, R, E> =
+    Result<Option<(LiteralOccurrence<T>, R)>, LiteralCursorError<T, E>>;
 
 /// Streaming capability over selected immutable literal occurrences and readers.
 ///
@@ -43,7 +48,8 @@ pub trait LiteralOccurrenceCursor: Send {
     type Term: Clone + Eq + Send + Sync;
     /// Cursor/read failure.
     type Error: Error + Send + Sync + 'static;
-    /// Owned reader for one immutable literal, independent of scratch writes.
+    /// Reader for one immutable literal, independent of scratch writes.
+    /// It may borrow the immutable accessor for the cursor's lifetime.
     type Reader: LiteralReader<Error = Self::Error>;
     /// Return one occurrence and reader; zero remaining rows must mean successful EOF.
     fn next(
@@ -88,6 +94,8 @@ pub struct LiteralTypingReport {
 /// Aborted semantic phase; staged facts must remain unpublished.
 #[derive(Debug)]
 pub enum LiteralTypingError<T, E> {
+    /// Cursor traversal/opening failed, retaining structural evidence when known.
+    Cursor(LiteralCursorError<T, E>),
     /// Shared clause compilation, storage, cancellation or output-budget failure.
     Reasoning(ReasoningError<E>),
     /// Examination of another literal would exceed the occurrence budget.
@@ -110,6 +118,7 @@ pub enum LiteralTypingError<T, E> {
 impl<T, E: fmt::Display> fmt::Display for LiteralTypingError<T, E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Cursor(error) => error.fmt(f),
             Self::Reasoning(error) => error.fmt(f),
             Self::OccurrenceLimit => f.write_str("literal occurrence limit exceeded"),
             Self::RoleMismatch {
@@ -131,6 +140,7 @@ impl<T, E: fmt::Display> fmt::Display for LiteralTypingError<T, E> {
 impl<T: fmt::Debug, E: Error + 'static> Error for LiteralTypingError<T, E> {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
+            Self::Cursor(error) => error.source(),
             Self::Reasoning(error) => Some(error),
             Self::Literal { error, .. } => Some(error),
             _ => None,

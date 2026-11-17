@@ -36,6 +36,13 @@ pub struct OccurrencePath {
     nested: Vec<TermPosition>,
 }
 impl OccurrencePath {
+    /// A direct term position in the selected root triple.
+    pub const fn root(position: TermPosition) -> Self {
+        Self {
+            root: position,
+            nested: Vec::new(),
+        }
+    }
     /// Iterate the root position followed by zero or more nested positions.
     pub fn positions(&self) -> impl DoubleEndedIterator<Item = &TermPosition> {
         std::iter::once(&self.root).chain(self.nested.iter())

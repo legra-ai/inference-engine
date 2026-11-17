@@ -69,9 +69,11 @@ impl LiteralOccurrenceCursor for Cursor {
     type Term = u64;
     type Error = io::Error;
     type Reader = Reader;
-    async fn next(&mut self) -> io::Result<Option<(LiteralOccurrence<u64>, Reader)>> {
+    async fn next(
+        &mut self,
+    ) -> inference_engine::reasoning::LiteralOccurrenceRead<u64, Reader, io::Error> {
         if self.rows.is_empty() && self.fail_eof {
-            return Err(io::Error::other("late occurrence failure"));
+            return Err(io::Error::other("late occurrence failure").into());
         }
         Ok(self.rows.pop_front())
     }
@@ -84,6 +86,9 @@ fn row(
 ) -> (LiteralOccurrence<u64>, Reader) {
     (
         LiteralOccurrence {
+            path: inference_engine::reasoning::OccurrencePath::root(
+                inference_engine::reasoning::TermPosition::Object,
+            ),
             literal: key,
             root: [10, 11, key],
             role,

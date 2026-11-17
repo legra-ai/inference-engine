@@ -100,13 +100,18 @@ impl LiteralOccurrenceCursor for Occurrences {
     type Term = u64;
     type Error = io::Error;
     type Reader = Reader;
-    async fn next(&mut self) -> io::Result<Option<(LiteralOccurrence<u64>, Reader)>> {
+    async fn next(
+        &mut self,
+    ) -> inference_engine::reasoning::LiteralOccurrenceRead<u64, Reader, io::Error> {
         if self.remaining == 0 {
             return Ok(None);
         }
         self.remaining -= 1;
         Ok(Some((
             LiteralOccurrence {
+                path: inference_engine::reasoning::OccurrencePath::root(
+                    inference_engine::reasoning::TermPosition::Object,
+                ),
                 literal: 50,
                 root: [10, 11, 50],
                 role: LiteralRole::Source,

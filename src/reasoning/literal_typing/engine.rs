@@ -59,10 +59,7 @@ impl Rdf12LiteralTyper {
         let mut report = LiteralTypingReport::default();
         loop {
             Self::check_cancelled(store)?;
-            let next = cursor
-                .next()
-                .await
-                .map_err(|error| LiteralTypingError::Reasoning(ReasoningError::Storage(error)))?;
+            let next = cursor.next().await.map_err(LiteralTypingError::Cursor)?;
             Self::check_cancelled(store)?;
             let Some((occurrence, mut reader)) = next else {
                 return Ok(report);

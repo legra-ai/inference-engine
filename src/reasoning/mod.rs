@@ -21,8 +21,9 @@ pub use conflict::{
 pub use engine::Reasoner;
 pub use literal::{LiteralError, LiteralReader, LiteralReport, Rdf12LiteralValidator};
 pub use literal_typing::{
-    LiteralOccurrence, LiteralOccurrenceCursor, LiteralOccurrenceRead, LiteralRole,
-    LiteralTypingError, LiteralTypingLimits, LiteralTypingReport, Rdf12LiteralTyper,
+    LiteralCursorError, LiteralOccurrence, LiteralOccurrenceCursor, LiteralOccurrenceRead,
+    LiteralRole, LiteralTermAccess, LiteralTypingError, LiteralTypingLimits, LiteralTypingReport,
+    Rdf12LiteralOccurrences, Rdf12LiteralTyper,
 };
 pub use occurrence::{
     OccurrenceError, OccurrenceLimits, OccurrencePath, Rdf12OccurrenceCursor, TermOccurrence,
