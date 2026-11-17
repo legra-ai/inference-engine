@@ -29,6 +29,7 @@ jobs:
       - uses: legra-ai/github-actions/.github/actions/prepare-cargo-release@8cdaad621c581c2f59e5eb0dfafc05f635c12c0a
         id: release
         with:
+          breaking-change-bump: minor
           token: ${{ github.token }}
           plan-only: 'true'
       - name: Show release proposal
@@ -86,6 +87,7 @@ jobs:
       - uses: legra-ai/github-actions/.github/actions/prepare-cargo-release@8cdaad621c581c2f59e5eb0dfafc05f635c12c0a
         id: release
         with:
+          breaking-change-bump: minor
           token: ${{ steps.writer.outputs.token || github.token }}
       - name: Read version from the exact prepared source, including PR builds
         id: manifest
