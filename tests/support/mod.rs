@@ -72,7 +72,7 @@ pub struct Store {
     // bounded: at most four standard existential descriptors per capped test attempt.
     pub witnesses: BTreeMap<Rdf12ExistentialAxiomId, u64>,
     pub witness_scope: u64,
-    // bounded: at most 512 term constructions/depth entries per constructor fixture.
+    // bounded: at most 1024 term constructions/depth entries per constructor fixture.
     pub constructed: BTreeMap<Triple, u64>,
     pub term_depths: BTreeMap<u64, u32>,
     pub snapshot_calls: u64,
@@ -191,8 +191,8 @@ impl Rdf12TripleTermStore for Store {
                 "substituted triple-term nesting limit exceeded",
             ));
         }
-        assert!(self.constructed.len() < 512);
-        assert!(self.term_depths.len() < 512);
+        assert!(self.constructed.len() < 1024);
+        assert!(self.term_depths.len() < 1024);
         // The bounded constructor range stays disjoint from fixture IRI IDs 1000..1256.
         let key = 10_000 + self.constructed.len() as u64;
         self.constructed.insert(triple, key);

@@ -237,3 +237,77 @@ async fn target_construction_respects_outer_bindings_without_typing_target_predi
     assert!(!store.asserted.contains(&[31, 32, 33]));
     assert!(!store.inferred.contains(&[31, 32, 33]));
 }
+
+#[tokio::test]
+async fn legal_target_couples_constructed_quote_to_outer_binding_through_subproperty_reflexivity() {
+    let mut store = Store::new([[10, 20, 31]]);
+    let property = store.iri("http://www.w3.org/1999/02/22-rdf-syntax-ns#Property");
+    let prop = store.iri("http://www.w3.org/2000/01/rdf-schema#Proposition");
+    let subproperty = store.iri("http://www.w3.org/2000/01/rdf-schema#subPropertyOf");
+    store
+        .asserted
+        .extend([[32, TYPE, property], [prop, support::SUBCLASS, property]]);
+    let mut terms = Terms {
+        quoted: BTreeMap::from([(91, [41, 32, 33]), (92, [41, 22, 33])]),
+    };
+    // Both target graphs use triple terms only in object positions, legal RDF 1.2.
+    let target = [[10, 20, 41], [42, subproperty, 91], [42, TYPE, prop]];
+    let negative = [[10, 20, 41], [42, subproperty, 92], [42, TYPE, prop]];
+    let roots = store
+        .snapshot()
+        .await
+        .unwrap()
+        .scan([None; 3])
+        .await
+        .unwrap();
+    let mut source = Rdf12OccurrenceCursor::new(
+        roots,
+        &terms,
+        LiteralRole::Source,
+        OccurrenceLimits::new(NonZeroU32::new(3).unwrap(), n(100), n(1000)),
+    );
+    Rdf12OccurrenceTyper::new(n(100), LiteralRole::Source)
+        .run(&mut store, &mut source)
+        .await
+        .unwrap();
+    let roots = Store::new(target.into_iter().chain(negative))
+        .snapshot()
+        .await
+        .unwrap()
+        .scan([None; 3])
+        .await
+        .unwrap();
+    let mut context = Rdf12OccurrenceCursor::new(
+        roots,
+        &terms,
+        LiteralRole::TargetContext,
+        OccurrenceLimits::new(NonZeroU32::new(3).unwrap(), n(100), n(1000)),
+    );
+    Rdf12OccurrenceTyper::new(n(100), LiteralRole::TargetContext)
+        .run(&mut store, &mut context)
+        .await
+        .unwrap();
+    assert!(!match_target(&mut store, &terms, &target).await);
+    Rdf12PropositionConstructor::new(PropositionLimits::new(n(1024), n(20_000)))
+        .run(&mut store)
+        .await
+        .unwrap();
+    // bounded: test adapter's dictionary cap is 1024 constructors, independent of graph scale.
+    for (triple, key) in &store.constructed {
+        terms.quoted.insert(*key, *triple);
+    }
+    assert!(
+        !match_target(&mut store, &terms, &target).await,
+        "subproperty reflexivity has not executed yet"
+    );
+    inference_engine::reasoning::Reasoner::new(
+        inference_engine::reasoning::ExecutionProfile::RdfsCore,
+        support::limits(4096, 16, 2_000_000),
+    )
+    .run(&mut store)
+    .await
+    .unwrap();
+    assert!(match_target(&mut store, &terms, &target).await);
+    assert!(!match_target(&mut store, &terms, &negative).await);
+    assert!(!store.inferred.contains(&[31, 32, 33]));
+}
