@@ -25,7 +25,7 @@ impl PropositionLimits {
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PropositionReport {
-    /// Examined source rows across all premise scans, including repeated joins.
+    /// Examined join rows, or candidate plus exact-premise rows in targeted execution.
     pub matches: u64,
     /// Novel proposition-membership tuples, excluding asserted/inferred duplicates.
     pub inferred: u64,
@@ -98,6 +98,73 @@ impl Rdf12PropositionConstructor {
                     )
                     .await?;
                 }
+            }
+        }
+        Self::cancel(store)?;
+        Ok(report)
+    }
+    /// Construct only caller-selected subject/predicate/object candidates.
+    ///
+    /// Candidates are structural tuples, not asserted RDF premises. The controller
+    /// streams existing terms or adequately substituted target goals; it remains
+    /// responsible for selection completeness and source/target phase ordering.
+    /// One immutable snapshot verifies all three exact shared typing premises.
+    /// No resource/property Cartesian product or recursive feedback is generated.
+    /// Missing premises skip a candidate, not establish non-entailment.
+    ///
+    /// `matches` counts candidate rows plus examined premise rows. Both empty and
+    /// successful premise probes are exhausted, so late backend errors invalidate
+    /// prior staging. All ordinary constructor output/depth/cancellation errors
+    /// retain their abort semantics. The candidate cursor must be bounded/streamed.
+    ///
+    /// # Errors
+    /// Read/compile/storage, malformed probes, cancellation and budgets fail the
+    /// entire attempt; discard all partial staged output and dictionary additions.
+    pub async fn run_candidates<S, C>(
+        &self,
+        store: &mut S,
+        candidates: &mut C,
+    ) -> Result<PropositionReport, ReasoningError<S::Error>>
+    where
+        S: Rdf12TripleTermStore,
+        C: TripleCursor<Term = S::Term, Error = S::Error>,
+    {
+        Self::cancel(store)?;
+        let clause = PropositionClause::compile(Rdf12PropositionRuleId::Grdfs14, store).await?;
+        let source = store.snapshot().await.map_err(ReasoningError::Storage)?;
+        let mut report = PropositionReport::default();
+        while let Some(candidate) = self.next(candidates, store, &mut report).await? {
+            let bindings = clause
+                .triple
+                .bind(&candidate, std::array::from_fn(|_| None))
+                .ok_or(ReasoningError::UnsupportedPropositionRule(clause.id))?;
+            // bounded: precisely three fixed shared premise tuples per candidate.
+            let mut premises = std::array::from_fn(|_| candidate.clone());
+            let mut supported = true;
+            for (index, pattern) in clause.body.iter().enumerate() {
+                let premise = pattern
+                    .ground(&bindings)
+                    .ok_or(ReasoningError::UnsupportedPropositionRule(clause.id))?;
+                let mut probe = source
+                    .scan(premise.clone().map(Some))
+                    .await
+                    .map_err(ReasoningError::Storage)?;
+                let mut found = false;
+                while let Some(row) = self.next(&mut probe, store, &mut report).await? {
+                    if row != premise {
+                        return Err(ReasoningError::InvalidProbe);
+                    }
+                    found = true;
+                }
+                if !found {
+                    supported = false;
+                    break;
+                }
+                premises[index] = premise;
+            }
+            if supported {
+                self.emit(&clause, &bindings, premises, store, &mut report)
+                    .await?;
             }
         }
         Self::cancel(store)?;

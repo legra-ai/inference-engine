@@ -33,13 +33,16 @@ impl TripleCursor for Cursor {
     }
 }
 
-pub struct Snapshot(BTreeSet<Triple>, bool);
+pub struct Snapshot(BTreeSet<Triple>, bool, bool);
 
 impl TripleSource for Snapshot {
     type Term = u64;
     type Error = io::Error;
     type Cursor = Cursor;
     async fn scan(&self, pattern: [Option<u64>; 3]) -> io::Result<Cursor> {
+        if self.2 && pattern.iter().all(Option::is_some) {
+            return Ok(Cursor(vec![[0; 3]].into_iter(), false)); // bounded: one deliberately malformed probe row.
+        }
         // bounded: these test fixtures contain at most 4096 tuples, enforced at insertion.
         Ok(Cursor(
             self.0
@@ -68,6 +71,7 @@ pub struct Store {
     pub fail_read: bool,
     pub fail_write: bool,
     pub fail_cursor: bool,
+    pub mismatched_probe: bool,
     pub fail_after_writes: Option<usize>,
     // bounded: at most four standard existential descriptors per capped test attempt.
     pub witnesses: BTreeMap<Rdf12ExistentialAxiomId, u64>,
@@ -121,6 +125,7 @@ impl ReasoningStore for Store {
         Ok(Snapshot(
             self.asserted.union(&self.inferred).copied().collect(),
             self.fail_cursor,
+            self.mismatched_probe,
         ))
     }
     async fn contains(&mut self, triple: &Triple) -> io::Result<bool> {

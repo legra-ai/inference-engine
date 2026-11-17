@@ -198,6 +198,8 @@ pub enum Limit {
 pub enum ReasoningError<E> {
     /// Fallible backend read, resolution or write failed.
     Storage(E),
+    /// Backend returned a tuple outside an exact requested premise probe.
+    InvalidProbe,
     /// Caller cancelled or superseded the attempt.
     Cancelled,
     /// Explicit budget prevented complete closure.
@@ -219,6 +221,9 @@ impl<E: fmt::Display> fmt::Display for ReasoningError<E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Storage(error) => write!(f, "reasoning storage failed: {error}"),
+            Self::InvalidProbe => {
+                f.write_str("reasoning snapshot returned a row outside an exact probe")
+            }
             Self::Cancelled => f.write_str("reasoning cancelled"),
             Self::LimitExceeded(limit) => write!(
                 f,
