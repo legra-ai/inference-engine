@@ -12,9 +12,11 @@ use inference_engine::{
 };
 use rdf_structural_model::{Literal, LiteralMetadata};
 use std::{
+    future::Future,
     io,
     num::{NonZeroU32, NonZeroU64},
-    sync::atomic::{AtomicUsize, Ordering},
+    sync::atomic::{AtomicBool, AtomicUsize, Ordering},
+    task::{Context, Poll, Waker},
 };
 use support::{Store, TYPE};
 struct Access {
@@ -23,12 +25,14 @@ struct Access {
     reads: AtomicUsize,
     fail_open: bool,
     fail_structure: bool,
+    cancelled: AtomicBool,
 }
 struct Reader<'a> {
     payload: &'a [u8],
     metadata: &'a LiteralMetadata,
     reads: &'a AtomicUsize,
     offset: usize,
+    cancelled: &'a AtomicBool,
 }
 impl LiteralReader for Reader<'_> {
     type Error = io::Error;
@@ -43,7 +47,7 @@ impl LiteralReader for Reader<'_> {
         Ok(size)
     }
     fn is_cancelled(&self) -> bool {
-        false
+        self.cancelled.load(Ordering::Relaxed)
     }
 }
 impl EntailmentTerms for Access {
@@ -59,7 +63,7 @@ impl EntailmentTerms for Access {
         Ok(if *key == 90 { Some([30, 11, 30]) } else { None })
     }
     fn is_cancelled(&self) -> bool {
-        false
+        self.cancelled.load(Ordering::Relaxed)
     }
 }
 impl LiteralTermAccess for Access {
@@ -76,6 +80,7 @@ impl LiteralTermAccess for Access {
             metadata: &self.metadata,
             reads: &self.reads,
             offset: 0,
+            cancelled: &self.cancelled,
         }))
     }
 }
@@ -87,6 +92,7 @@ fn access() -> Access {
         reads: AtomicUsize::new(0),
         fail_open: false,
         fail_structure: false,
+        cancelled: AtomicBool::new(false),
     }
 }
 fn n(value: u64) -> NonZeroU64 {
@@ -208,4 +214,31 @@ async fn structural_and_late_root_failures_are_not_successful_literal_eof() {
             Err(LiteralTypingError::Cursor(LiteralCursorError::Traversal(_)))
         ));
     }
+}
+
+#[tokio::test]
+async fn nonliteral_filtering_yields_and_never_turns_cancellation_into_empty_success() {
+    let access = access();
+    // bounded: exactly 1000 small fixture roots, beneath Store's enforced 4096 cap.
+    let mut store = Store::new((100..1100).map(|member| [member, 8, 9]));
+    let roots = store
+        .snapshot()
+        .await
+        .unwrap()
+        .scan([None; 3])
+        .await
+        .unwrap();
+    let limits = OccurrenceLimits::new(NonZeroU32::new(1).unwrap(), n(3000), n(5000));
+    let mut cursor = Rdf12LiteralOccurrences::new(roots, &access, LiteralRole::Source, limits);
+    let mut future = Box::pin(cursor.next());
+    let mut context = Context::from_waker(Waker::noop());
+    assert!(matches!(future.as_mut().poll(&mut context), Poll::Pending));
+    access.cancelled.store(true, Ordering::Relaxed);
+    assert!(matches!(
+        future.await,
+        Err(LiteralCursorError::Traversal(
+            inference_engine::reasoning::OccurrenceError::Cancelled
+        ))
+    ));
+    assert_eq!(access.reads.load(Ordering::Relaxed), 0);
 }
