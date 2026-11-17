@@ -26,6 +26,8 @@ pub enum Rdfs12SourceError<T, E> {
     VocabularyLimit,
     /// Checked descriptor did not resolve to the selected appearing IRI identity.
     VocabularyIdentity,
+    /// Existing triple-term decomposition did not resolve to the same exact key.
+    PropositionIdentity,
     /// Complete source-only diagnostic scan failed.
     Conflicts(DatatypeConflictError<E>),
     /// Outer round budget ended before proving the selected source fixpoint.
@@ -51,6 +53,9 @@ impl<T, E: fmt::Display> fmt::Display for Rdfs12SourceError<T, E> {
             Self::VocabularyLimit => f.write_str("source container metadata limit exceeded"),
             Self::VocabularyIdentity => {
                 f.write_str("source container descriptor does not match selected term")
+            }
+            Self::PropositionIdentity => {
+                f.write_str("source triple-term construction does not match selected term")
             }
             Self::Conflicts(error) => error.fmt(f),
             Self::Rounds => f.write_str("source preparation round limit exceeded"),

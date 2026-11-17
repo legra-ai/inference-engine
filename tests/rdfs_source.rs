@@ -245,3 +245,31 @@ async fn assertions_retain_precedence_and_execution_values_round_trip_without_ru
         postcard::from_bytes(&postcard::to_allocvec(&config).unwrap()).unwrap();
     assert_eq!(decoded.rounds, config.rounds);
 }
+
+#[tokio::test]
+async fn a_noncanonical_existing_quote_cannot_report_successful_source_preparation() {
+    let mut fixture = Fixture::new();
+    let subject = fixture.iri("urn:example:s");
+    let claims = fixture.iri("urn:example:claims");
+    let a = fixture.iri("urn:example:a");
+    let p = fixture.iri("urn:example:p");
+    let b = fixture.iri("urn:example:b");
+    let quote = fixture.quoted([a, p, b]).await;
+    fixture
+        .store
+        .inner
+        .asserted
+        .insert([subject, claims, quote]);
+    fixture.corrupt_quotation_identity();
+    assert!(
+        Rdfs12Source::new(config())
+            .run(
+                &mut fixture.store,
+                &fixture.access,
+                &mut Diagnostics::default()
+            )
+            .await
+            .is_err(),
+        "existing-term construction must round-trip to the selected exact key"
+    );
+}

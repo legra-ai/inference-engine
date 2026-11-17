@@ -219,6 +219,13 @@ impl Rdfs12Source {
             else {
                 continue;
             };
+            let canonical = store
+                .resolve_triple_term(triple.clone())
+                .await
+                .map_err(ReasoningError::Storage)?;
+            if canonical != occurrence.term {
+                return Err(Rdfs12SourceError::PropositionIdentity);
+            }
             let mut candidate = Candidate::<_, S::Error> {
                 triple: Some(triple),
                 error: PhantomData,

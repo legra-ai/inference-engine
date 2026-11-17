@@ -32,6 +32,7 @@ struct Dictionary {
     // bounded: at most 16 literal records of at most 32 KiB each.
     literals: BTreeMap<u64, Arc<LiteralData>>,
     wrong_container: bool,
+    wrong_quotation: bool,
     cancel: Arc<AtomicBool>,
 }
 impl Dictionary {
@@ -68,6 +69,9 @@ impl Fixture {
             },
             access: Access(dictionary),
         }
+    }
+    pub fn corrupt_quotation_identity(&mut self) {
+        self.store.dictionary.lock().unwrap().wrong_quotation = true;
     }
     pub fn corrupt_container_classification(&mut self) {
         self.store.dictionary.lock().unwrap().wrong_container = true;
@@ -129,7 +133,13 @@ impl Rdf12WitnessStore for Store {
 impl Rdf12TripleTermStore for Store {
     async fn resolve_triple_term(&mut self, triple: [u64; 3]) -> io::Result<u64> {
         let key = self.inner.resolve_triple_term(triple).await?;
-        self.dictionary.lock().unwrap().quoted.insert(key, triple);
+        let mut dictionary = self.dictionary.lock().unwrap();
+        let key = if dictionary.wrong_quotation {
+            key + 50_000
+        } else {
+            key
+        };
+        dictionary.quoted.insert(key, triple);
         Ok(key)
     }
 }
