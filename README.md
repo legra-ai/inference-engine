@@ -21,7 +21,9 @@ APIs seed RDF 1.2 ground axioms and scoped blank witnesses, validate streamed li
 default-map literal and recursive occurrence clauses, construct finite proposition
 terms, report
 source-only default datatype conflicts and check simple source-to-target entailment
-with nested blank-node substitution. See [the adapter and execution contracts](docs/rdfs-subclass.md).
+with nested blank-node substitution. A [source-preparation controller](docs/rdfs-source.md)
+composes these source phases before target augmentation. See also
+[the individual adapter and execution contracts](docs/rdfs-subclass.md).
 
 **Full RDFS 1.2 entailment is in development.** Complete consistency checking,
 adequate target-relevant construction and the integrated entailment procedure
