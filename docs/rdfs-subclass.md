@@ -244,6 +244,14 @@ is false before construction and before the following core closure, then true;
 a predicate mentioned only in target context remains a negative case. No Turtle
 parser extension or quoted-content assertion is involved.
 
+A further legal chained-goal regression constructs a first proposition, runs core
+closure to establish its resource/property membership, then constructs a second
+proposition containing it and closes core rules again. The second candidate is
+unsupported before the intervening core phase, and the complete target remains
+unmatched until both derivations finish. This establishes another scheduling
+obligation; it does not justify unrestricted recursive constructor feedback or
+certify a complete negative entailment procedure.
+
 ## Source datatype conflicts
 
 `Rdf12DatatypeConflictChecker` executes the three shared positive diagnostic
