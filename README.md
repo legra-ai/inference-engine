@@ -18,13 +18,14 @@ The Rust API executes the explicit `rdfs-subclass` profile (shared rules `rdfs9`
 and `rdfs11`) and `rdfs-core` (fourteen shared RDF/RDFS clauses). Callers supply
 asynchronous database scans, indexed probes and scratch storage. Separate bounded
 APIs seed RDF 1.2 ground axioms and scoped blank witnesses, validate streamed literal payloads, execute shared
-default-map literal-typing clauses, construct finite proposition terms, report
+default-map literal and recursive occurrence clauses, construct finite proposition
+terms, report
 source-only default datatype conflicts and check simple source-to-target entailment
 with nested blank-node substitution. See [the adapter and execution contracts](docs/rdfs-subclass.md).
 
 **Full RDFS 1.2 entailment is in development.** Complete consistency checking,
-recursive occurrence/proposition processing and the integrated entailment
-procedure remain outstanding. The development order is RDFS 1.2, OWL-RL,
+adequate target-relevant construction and the integrated entailment procedure
+remain outstanding. The development order is RDFS 1.2, OWL-RL,
 general Datalog, then SHACL 1.2 reasoning. The other named profiles currently
 support compilation and inspection. Python and Node expose profile inspection;
 the executable storage-adapter APIs are Rust-only.

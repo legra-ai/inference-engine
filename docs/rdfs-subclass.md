@@ -152,10 +152,22 @@ or fail, never return `None` for an evicted triple term. Late root failures,
 unsupported term access, cancellation and exhausted limits abort the traversal
 and invalidate partial semantic output. Futures are `Send`.
 
-This is structural traversal. Binding these appearances to shared `rdfD2`/`rdfs4`
-clauses, source-only predicate typing and role-specific target augmentation are
-separate execution obligations; traversal alone does not implement those rules
-or establish a complete RDF/RDFS procedure.
+`Rdf12OccurrenceTyper` binds these trusted appearances to the shared `rdfD2`
+and `rdfs4` definitions. It compiles their virtual premises and RDF heads through
+the same checked pattern compiler as the structural executor. Source processing
+admits both clauses; target context admits `rdfs4` only. A cursor/phase role
+mismatch fails before traversal reads or clause compilation. Ordinary RDF triples
+spelling an auxiliary relation cannot forge its semantic premises.
+
+`Evidence::Occurrence` retains the rule and actual root, enclosing parent, path
+and role. A nested parent is structural evidence, not an asserted RDF premise.
+The typer caps novel output separately from cursor traversal budgets; duplicate
+assertions/inferences consume inspection work but no novel-output budget. All
+errors invalidate partial output. Writable stores need only be `Send`.
+
+The phase processes one immutable selection. The controller must schedule newly
+staged triples, literal validation, source consistency and target augmentation.
+These phase APIs do not establish a complete RDF/RDFS entailment procedure.
 
 ## Finite proposition construction
 
@@ -181,6 +193,14 @@ must choose adequate typing and source/target/substitution context before
 construction. This operation does not establish a complete execution schedule
 for the draft standard's postulated Appendix A procedure, and unrestricted
 recursive construction is not permitted. All errors invalidate staged output.
+
+Composition regressions execute source occurrence typing, finite construction
+and simple matching together. They prove existing triple-term abstraction,
+separate inner/outer abstraction, repeated term identity and consistent mappings
+shared between nested and outer occurrences, with explicit negative cases.
+No extra source blank is allocated for these abstractions, and no quoted contents
+are asserted. These selected compositions do not prove completeness of every
+source/target context or the complete controller schedule.
 
 ## Source datatype conflicts
 
