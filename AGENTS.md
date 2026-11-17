@@ -9,5 +9,5 @@
 - Native binding failures fail immediately; no Python/JavaScript fallback engine.
 - Alpha releases only until explicitly promoted. Cargo is the version authority.
 - Use shared tested-main release actions; never add another publisher or expose credentials.
-- Every major-number increase requires explicit approval of the exact version and scope.
+- Every minor or major increase requires explicit approval of the exact level, version and scope; patches are automatic.
 - Check actual packaged tests/licenses and preserve tested archives across interrupted releases.
