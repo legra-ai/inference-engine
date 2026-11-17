@@ -3,7 +3,7 @@
 use inference_engine::entailment::EntailmentTerms;
 use inference_engine::reasoning::{
     DatatypeConflictSink, LiteralOccurrenceCursor, LiteralRole, Rdf12AxiomSeeder,
-    Rdf12DatatypeConflictChecker, Rdf12LiteralTyper, Rdf12OccurrenceCursor,
+    Rdf12DatatypeConflictChecker, Rdf12LiteralTyper, Rdf12OccurrenceCursor, Rdf12OccurrenceTyper,
     Rdf12PropositionConstructor, Rdf12TripleTermStore, Rdf12WitnessStore, Reasoner, ReasoningStore,
     TripleCursor,
 };
@@ -58,4 +58,17 @@ where
     C: TripleCursor<Term = A::Term, Error = A::Error>,
 {
     require_send(cursor.next());
+}
+
+#[allow(dead_code)]
+fn occurrence_typing_future_is_send<S, A, C>(
+    typer: &Rdf12OccurrenceTyper,
+    store: &mut S,
+    cursor: &mut Rdf12OccurrenceCursor<'_, A, C>,
+) where
+    S: ReasoningStore,
+    A: EntailmentTerms<Term = S::Term, Error = S::Error>,
+    C: TripleCursor<Term = S::Term, Error = S::Error>,
+{
+    require_send(typer.run(store, cursor));
 }
