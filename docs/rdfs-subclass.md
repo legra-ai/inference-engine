@@ -221,6 +221,29 @@ No extra source blank is allocated for these abstractions, and no quoted content
 are asserted. These selected compositions do not prove completeness of every
 source/target context or the complete controller schedule.
 
+`Rdf12PropositionConstructor::run_candidates` provides targeted execution of
+the same shared constructor. The controller streams candidate component tuples,
+including already existing terms or target goals with adequate substitutions.
+One immutable snapshot verifies all three exact typing premises; the same
+canonical constructor, exact evidence, output cap and substituted-depth checks
+apply. The engine does not enumerate the resource/property product in this mode.
+
+Missing premises skip a candidate; they do not prove non-entailment. Candidate
+selection completeness, target substitutions and phase scheduling remain the
+controller's responsibility. Candidate rows and examined premise rows share the
+strict work budget. Probes are exhausted to catch late read errors; rows outside
+an exact requested probe fail with `ReasoningError::InvalidProbe`. Partial
+staging is invalid on every failure. Writable stores need only be `Send`.
+
+Some structural composition tests deliberately use generalized target triples.
+A separate legal RDF 1.2 target regression uses triple terms only as objects:
+source proposition-to-property subclassing plus `rdfs9`/`rdfs6` makes a newly
+constructed proposition relate to itself through `rdfs:subPropertyOf`. Matching
+that object shares a blank binding with an outer source relationship. The test
+is false before construction and before the following core closure, then true;
+a predicate mentioned only in target context remains a negative case. No Turtle
+parser extension or quoted-content assertion is involved.
+
 ## Source datatype conflicts
 
 `Rdf12DatatypeConflictChecker` executes the three shared positive diagnostic

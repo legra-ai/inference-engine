@@ -79,3 +79,15 @@ fn borrowed_literal_error_retains_error_source(
 ) {
     let _ = std::error::Error::source(error);
 }
+
+#[allow(dead_code)]
+fn candidate_constructor_future_is_send<S, C>(
+    constructor: &Rdf12PropositionConstructor,
+    store: &mut S,
+    candidates: &mut C,
+) where
+    S: Rdf12TripleTermStore,
+    C: TripleCursor<Term = S::Term, Error = S::Error>,
+{
+    require_send(constructor.run_candidates(store, candidates));
+}

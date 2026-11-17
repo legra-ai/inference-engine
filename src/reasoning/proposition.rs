@@ -15,7 +15,7 @@ pub struct PropositionLimits {
     matches: NonZeroU64,
 }
 impl PropositionLimits {
-    /// Bound novel output tuples and examined rows across the three premise scans.
+    /// Bound novel output tuples and examined rows in the selected constructor mode.
     pub const fn new(inferred: NonZeroU64, matches: NonZeroU64) -> Self {
         Self { inferred, matches }
     }
