@@ -12,6 +12,7 @@ mod occurrence_typing;
 mod plan;
 mod proposition;
 mod seeding;
+mod source;
 mod types;
 
 pub use conflict::{
@@ -32,6 +33,10 @@ pub use occurrence::{
 pub use occurrence_typing::{OccurrenceTypingError, OccurrenceTypingReport, Rdf12OccurrenceTyper};
 pub use proposition::{PropositionLimits, PropositionReport, Rdf12PropositionConstructor};
 pub use seeding::Rdf12AxiomSeeder;
+pub use source::{
+    Rdf12ContainerAccess, Rdfs12Source, Rdfs12SourceConfig, Rdfs12SourceError, Rdfs12SourceOutcome,
+    Rdfs12SourceReport,
+};
 pub use types::{
     AxiomFamily, Evidence, ExecutionProfile, Inference, Limit, Premises, ProfileError,
     ReasoningError, RunLimits, RunReport,
