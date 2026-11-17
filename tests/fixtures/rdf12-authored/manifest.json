@@ -1,0 +1,138 @@
+{
+  "format": 1,
+  "revision": 2,
+  "license": "MIT OR Apache-2.0",
+  "provenance": "authored-regression",
+  "semantics": "https://www.w3.org/TR/2026/CRD-rdf12-semantics-20260924/",
+  "syntax": "https://www.w3.org/TR/2026/WD-rdf12-turtle-20261111/",
+  "entailment": "rdfs12-default",
+  "blank_node_scopes": "independent-source-target",
+  "cases": [
+    {
+      "id": "rdf12-target-construction-core-chain",
+      "source_turtle": "@prefix : <urn:example:> . @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> . @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> . :root :rel :d . :p a rdf:Property . rdfs:Proposition rdfs:subClassOf rdf:Property .",
+      "target_turtle": "@prefix : <urn:example:> . @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> . :root :rel _:z . _:x rdfs:subPropertyOf <<( _:z :p :b )>> . _:x a rdfs:Proposition . _:y rdfs:subPropertyOf <<( _:x :p :c )>> . _:y a rdfs:Proposition .",
+      "expected": true,
+      "requires": ["recursive-occurrences", "target-context", "proposition-construction", "core-rule-closure", "consistent-simple-matching"]
+    },
+    {
+      "id": "rdf12-target-construction-core-coupling",
+      "source_turtle": "@prefix : <urn:example:> . @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> . @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> . :a :rel :b . :p a rdf:Property . rdfs:Proposition rdfs:subClassOf rdf:Property .",
+      "target_turtle": "@prefix : <urn:example:> . @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> . :a :rel _:x . _:v rdfs:subPropertyOf <<( _:x :p :c )>> . _:v a rdfs:Proposition .",
+      "expected": true,
+      "requires": ["recursive-occurrences", "target-context", "proposition-construction", "core-rule-closure", "consistent-simple-matching"]
+    },
+    {
+      "id": "rdf12-target-construction-untyped-predicate",
+      "source_turtle": "@prefix : <urn:example:> . @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> . @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> . :a :rel :b . :p a rdf:Property . rdfs:Proposition rdfs:subClassOf rdf:Property .",
+      "target_turtle": "@prefix : <urn:example:> . @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> . :a :rel _:x . _:v rdfs:subPropertyOf <<( _:x :q :c )>> . _:v a rdfs:Proposition .",
+      "expected": false,
+      "requires": ["recursive-occurrences", "target-context", "proposition-construction", "core-rule-closure", "consistent-simple-matching"]
+    },
+    {
+      "id": "rdf12-triple-term-abstraction",
+      "source_turtle": "@prefix : <urn:example:> . :s :claims <<( :a :p :b )>> .",
+      "target_turtle": "@prefix : <urn:example:> . @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> . :s :claims _:v . _:v a rdfs:Proposition .",
+      "expected": true,
+      "requires": ["recursive-occurrences", "proposition-construction", "consistent-simple-matching"]
+    },
+    {
+      "id": "rdf12-repeated-triple-term-shared-blank",
+      "source_turtle": "@prefix : <urn:example:> . :s :claims <<( :a :p :b )>> . :t :claims <<( :a :p :b )>> .",
+      "target_turtle": "@prefix : <urn:example:> . @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> . :s :claims _:v . :t :claims _:v . _:v a rdfs:Proposition .",
+      "expected": true,
+      "requires": ["recursive-occurrences", "proposition-construction", "consistent-simple-matching"]
+    },
+    {
+      "id": "rdf12-conflicting-repeated-blank",
+      "source_turtle": "@prefix : <urn:example:> . :s :claims <<( :a :p :b )>> . :t :claims <<( :c :p :d )>> .",
+      "target_turtle": "@prefix : <urn:example:> . @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> . :s :claims _:v . :t :claims _:v . _:v a rdfs:Proposition .",
+      "expected": false,
+      "requires": ["recursive-occurrences", "proposition-construction", "consistent-simple-matching"]
+    },
+    {
+      "id": "rdf12-noninjective-target-blanks",
+      "source_turtle": "@prefix : <urn:example:> . :s :claims <<( :a :p :b )>> .",
+      "target_turtle": "@prefix : <urn:example:> . @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> . :s :claims _:v, _:w . _:v a rdfs:Proposition . _:w a rdfs:Proposition .",
+      "expected": true,
+      "requires": ["recursive-occurrences", "proposition-construction", "consistent-simple-matching"]
+    },
+    {
+      "id": "rdf12-nested-inner-and-outer-abstraction",
+      "source_turtle": "@prefix : <urn:example:> . :s :claims <<( :a :p <<( :c :q :d )>> )>> .",
+      "target_turtle": "@prefix : <urn:example:> . @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> . :s :claims <<( :a :p _:inner )>>, _:outer . _:inner a rdfs:Proposition . _:outer a rdfs:Proposition .",
+      "expected": true,
+      "requires": ["recursive-occurrences", "proposition-construction", "consistent-simple-matching"]
+    },
+    {
+      "id": "rdf12-conflicting-inner-and-outer-blank",
+      "source_turtle": "@prefix : <urn:example:> . :s :claims <<( :a :p <<( :c :q :d )>> )>> .",
+      "target_turtle": "@prefix : <urn:example:> . @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> . :s :claims <<( :a :p _:v )>>, _:v . _:v a rdfs:Proposition .",
+      "expected": false,
+      "requires": ["recursive-occurrences", "proposition-construction", "consistent-simple-matching"]
+    },
+    {
+      "id": "rdf12-independent-source-target-blank-labels",
+      "source_turtle": "@prefix : <urn:example:> . :s :claims <<( :a :p :b )>> . _:x :unrelated :o .",
+      "target_turtle": "@prefix : <urn:example:> . @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> . :s :claims _:x . _:x a rdfs:Proposition .",
+      "expected": true,
+      "requires": ["recursive-occurrences", "proposition-construction", "consistent-simple-matching"]
+    },
+    {
+      "id": "rdf12-quoted-content-not-asserted",
+      "source_turtle": "@prefix : <urn:example:> . :s :claims <<( :a :p :b )>> .",
+      "target_turtle": "@prefix : <urn:example:> . :a :p :b .",
+      "expected": false,
+      "requires": ["recursive-occurrences", "consistent-simple-matching"]
+    },
+    {
+      "id": "rdf12-nested-predicate-property",
+      "source_turtle": "@prefix : <urn:example:> . :s :claims <<( :a :p :b )>> .",
+      "target_turtle": "@prefix : <urn:example:> . @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> . :p a rdf:Property .",
+      "expected": true,
+      "requires": ["recursive-occurrences", "consistent-simple-matching"]
+    },
+    {
+      "id": "rdf12-source-only-container-membership",
+      "source_turtle": "@prefix : <urn:example:> . @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> . :a rdf:_937 :b .",
+      "target_turtle": "@prefix : <urn:example:> . @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> . :a rdfs:member :b .",
+      "expected": true,
+      "requires": ["container-seeding", "consistent-simple-matching"]
+    },
+    {
+      "id": "rdf12-target-only-container-declaration",
+      "source_turtle": "",
+      "target_turtle": "@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> . @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> . rdf:_937 a rdfs:ContainerMembershipProperty .",
+      "expected": true,
+      "requires": ["container-seeding", "target-context", "consistent-simple-matching"]
+    },
+    {
+      "id": "rdf12-target-predicate-not-arbitrary-property",
+      "source_turtle": "",
+      "target_turtle": "@prefix : <urn:example:> . @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> . :arbitrary a rdf:Property .",
+      "expected": false,
+      "requires": ["target-context", "consistent-simple-matching"]
+    },
+    {
+      "id": "rdf12-empty-source-existential-resource",
+      "source_turtle": "",
+      "target_turtle": "@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> . _:v a rdfs:Resource .",
+      "expected": true,
+      "requires": ["target-context", "consistent-simple-matching"]
+    },
+    {
+      "id": "rdf12-empty-source-nonempty-string-class",
+      "source_turtle": "",
+      "target_turtle": "@prefix xsd: <http://www.w3.org/2001/XMLSchema#> . _:v a xsd:string .",
+      "expected": true,
+      "requires": ["default-datatype-witnesses", "consistent-simple-matching"]
+    },
+    {
+      "id": "rdf12-nonempty-string-not-fixed-user-iri",
+      "source_turtle": "",
+      "target_turtle": "@prefix : <urn:example:> . @prefix xsd: <http://www.w3.org/2001/XMLSchema#> . :arbitrary a xsd:string .",
+      "expected": false,
+      "requires": ["default-datatype-witnesses", "consistent-simple-matching"]
+    }
+  ]
+}
