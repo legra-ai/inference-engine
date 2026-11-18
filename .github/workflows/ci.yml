@@ -313,7 +313,7 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.writer.outputs.token }}
         run: python3 scripts/release-packages.py stage
-      - uses: legra-ai/github-actions/.github/actions/publish-tested-crate@4f513e763cf79e620f670ceb4430fd8adfd06c7e
+      - uses: legra-ai/github-actions/.github/actions/publish-tested-crate@4821c86278ed3b0a7d9b51504a42b4b777863aa0
         with:
           crate: inference-engine
           version: ${{ needs.prepare.outputs.version }}
@@ -327,7 +327,7 @@ jobs:
         env:
           NPM_ARCHIVE: ${{ steps.npm.outputs.npm_archive }}
         run: npm publish "$GITHUB_WORKSPACE/$NPM_ARCHIVE" --tag alpha --access public --provenance --ignore-scripts
-      - uses: legra-ai/github-actions/.github/actions/verify-registry-publication@29002202e2829a98b1208ba3640c0e733ef15602
+      - uses: legra-ai/github-actions/.github/actions/verify-registry-publication@4821c86278ed3b0a7d9b51504a42b4b777863aa0
         with:
           registry: npm
           package: inference-engine
@@ -340,7 +340,7 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: pending-packages/
-      - uses: legra-ai/github-actions/.github/actions/verify-registry-publication@29002202e2829a98b1208ba3640c0e733ef15602
+      - uses: legra-ai/github-actions/.github/actions/verify-registry-publication@4821c86278ed3b0a7d9b51504a42b4b777863aa0
         with:
           registry: pypi
           package: inference-engine
