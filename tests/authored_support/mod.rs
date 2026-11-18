@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
     collections::BTreeSet,
+    fmt::Write,
     io,
     num::{NonZeroU32, NonZeroU64},
     path::PathBuf,
@@ -121,8 +122,13 @@ async fn manifest() -> Manifest {
         .await
         .expect("required authored manifest read");
     assert!(bytes.len() <= 65536);
+    // bounded: a SHA-256 digest has 32 bytes and exactly 64 hexadecimal characters.
+    let mut checksum = String::with_capacity(64);
+    for byte in Sha256::digest(&bytes) {
+        write!(checksum, "{byte:02x}").expect("writing hexadecimal bytes to String");
+    }
     assert_eq!(
-        format!("{:x}", Sha256::digest(&bytes)),
+        checksum,
         "d415b4cc6fbae9129a431805df2ccd4c4472a49ae8a18af5d071b43efa363ecd"
     );
     let manifest: Manifest =

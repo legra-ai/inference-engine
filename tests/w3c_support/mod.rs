@@ -7,6 +7,7 @@ use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use std::{
     collections::BTreeMap,
+    fmt::Write,
     num::{NonZeroU32, NonZeroU64},
     path::PathBuf,
 };
@@ -57,8 +58,13 @@ impl Fixtures {
     async fn parse(&self, filename: &str) -> Vec<Triple> {
         assert!(!filename.contains('/') && !filename.contains('\\'));
         let bytes = Self::read(self.directory.join(filename)).await;
+        // bounded: a SHA-256 digest has 32 bytes and exactly 64 hexadecimal characters.
+        let mut checksum = String::with_capacity(64);
+        for byte in Sha256::digest(&bytes) {
+            write!(checksum, "{byte:02x}").expect("writing hexadecimal bytes to String");
+        }
         assert_eq!(
-            format!("{:x}", Sha256::digest(&bytes)),
+            checksum,
             *self
                 .provenance
                 .sha256

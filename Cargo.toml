@@ -43,7 +43,7 @@ postcard = { version = "1", features = ["alloc"] }
 tokio = { version = "1.54.1", features = ["macros", "rt", "fs"] }
 oxttl = { version = "=0.2.5", features = ["rdf-12"] }
 oxrdf = { version = "=0.3.5", features = ["rdf-12"] }
-sha2 = "0.10"
+sha2 = "0.11"
 toml = "1.2.1"
 
 [package.metadata.version-info]
