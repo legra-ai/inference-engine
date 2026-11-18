@@ -4,6 +4,7 @@
 //! This module never collects a graph, chooses graphs, or promotes partial output.
 
 mod conflict;
+mod context;
 mod engine;
 mod literal;
 mod literal_typing;
@@ -18,6 +19,10 @@ mod types;
 pub use conflict::{
     DatatypeConflict, DatatypeConflictError, DatatypeConflictLimits, DatatypeConflictReport,
     DatatypeConflictSink, Rdf12DatatypeConflictChecker,
+};
+pub use context::{
+    Rdfs12Context, Rdfs12ContextConfig, Rdfs12ContextError, Rdfs12ContextOutcome,
+    Rdfs12TargetConfig, Rdfs12TargetReport,
 };
 pub use engine::Reasoner;
 pub use literal::{LiteralError, LiteralReader, LiteralReport, Rdf12LiteralValidator};
