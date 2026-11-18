@@ -26,7 +26,7 @@ role, original root and structural path. Container axioms retain their shared
 axiom authority, without fabricating an asserted target premise.
 
 Whole target triple terms do not automatically acquire resource facts. The
-[triple interpretation function](https://www.w3.org/TR/2026/CRD-rdf12-semantics-20260924/#simple-interpretations)
+[triple interpretation function](https://www.w3.org/TR/2026/CRD-rdf12-semantics-20260924/)
 takes a property as its middle argument. An unconstructed target term may lack
 that established denotation, so deriving its resource membership can manufacture
 an invalid proof. Already established resource facts remain available; other
