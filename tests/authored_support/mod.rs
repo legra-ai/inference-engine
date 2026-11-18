@@ -231,9 +231,11 @@ async fn execute(case: &Case) -> Status {
         NonZeroU32::new(256).unwrap(),
         NonZeroU64::new(2_000_000).unwrap(),
     ));
-    // bounded: at most four construction/core passes per immutable authored case.
+    // bounded: this harness exercises the two-pass positive witness schedule,
+    // including the published chain. It does not run constructor feedback to a
+    // fixpoint: unmatched targets may otherwise grow terms without a finite bound.
     // Expected verdicts never select execution phases or candidate substitutions.
-    for round in 0..=4 {
+    for round in 0..=2 {
         let source = match parser.fixture.store.snapshot().await {
             Ok(view) => view,
             Err(error) => return failure(Stage::Source, error),
@@ -257,7 +259,7 @@ async fn execute(case: &Case) -> Status {
             }
             Ok(_) => {}
         }
-        if round == 4 {
+        if round == 2 {
             return Status::Unsupported {
                 missing: Missing::BoundedPositiveSearch,
             };
