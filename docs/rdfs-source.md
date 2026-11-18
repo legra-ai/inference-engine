@@ -18,7 +18,8 @@ those supported conflicts. It is not an entailment verdict or a certificate of
 full RDFS consistency. `Conflicting` retains supported source diagnostics and
 forbids promotion. Every error invalidates partial scratch output. Complete
 requested semantics, input currentness and atomic publication remain caller-owned.
-Target-context augmentation, adequately substituted proposition candidates,
+The [context controller](rdfs-context.md) now composes this operation with
+original-target augmentation. Adequately substituted proposition candidates,
 bounded goal scheduling and complete negative decisions remain outstanding.
 The executable full `rdfs` selector remains unsupported.
 
