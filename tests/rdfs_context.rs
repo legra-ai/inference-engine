@@ -1,6 +1,7 @@
 //! Target-relative context follows complete source preparation and diagnostics.
 #[allow(dead_code)]
 mod source_support;
+use inference_engine::entailment::{EntailmentLimits, SimpleEntailment};
 use inference_engine::reasoning::{
     Evidence, LiteralError, LiteralRole, LiteralTypingError, Rdfs12Context, Rdfs12ContextConfig,
     Rdfs12ContextError, Rdfs12ContextOutcome, Rdfs12SourceError, ReasoningStore, TripleSource,
@@ -9,7 +10,10 @@ use iri_rfc3987::Iri;
 use rdf_reasoning::Rdf12Datatype;
 use rdf_structural_model::Literal;
 use source_support::{Diagnostics, Fixture, MemoryStore, context_config};
-use std::{io, num::NonZeroU64};
+use std::{
+    io,
+    num::{NonZeroU32, NonZeroU64},
+};
 
 type Target = <MemoryStore as ReasoningStore>::Snapshot;
 async fn target(rows: impl IntoIterator<Item = [u64; 3]>) -> Target {
@@ -46,6 +50,7 @@ async fn nested_target_vocabulary_seeds_containers_without_asserting_quotes_or_t
     };
     assert_eq!(source.diagnostics, 0);
     assert_eq!(target.seeded, 4);
+    assert_eq!(target.deferred_triple_terms, 1);
     let cmp = f.iri("http://www.w3.org/2000/01/rdf-schema#ContainerMembershipProperty");
     let property = f.iri("http://www.w3.org/1999/02/22-rdf-syntax-ns#Property");
     let resource = f.iri("http://www.w3.org/2000/01/rdf-schema#Resource");
@@ -254,4 +259,45 @@ async fn source_errors_and_target_metadata_or_budget_failures_do_not_prepare_con
             assert!(matches!(result, Err(Rdfs12ContextError::Reasoning(_))));
         }
     }
+}
+
+#[tokio::test]
+async fn an_unconstructed_target_triple_term_cannot_create_a_self_supporting_proof() {
+    let mut f = Fixture::new();
+    let resource = f.iri("http://www.w3.org/2000/01/rdf-schema#Resource");
+    let class = f.iri("http://www.w3.org/2000/01/rdf-schema#Class");
+    let property = f.iri("http://www.w3.org/1999/02/22-rdf-syntax-ns#Property");
+    let a = f.iri("urn:example:a");
+    let q = f.iri("urn:example:q");
+    let b = f.iri("urn:example:b");
+    let quote = f.quoted([a, q, b]).await;
+    let blank = f.blank(1, "target").unwrap();
+    f.store.inner.asserted.insert([resource, 2, class]);
+    let target = target([[blank, 2, quote]]).await;
+    Rdfs12Context::new(context_config())
+        .run(
+            &mut f.store,
+            &f.access,
+            &target,
+            &mut Diagnostics::default(),
+        )
+        .await
+        .unwrap();
+    assert!(!f.store.inner.inferred.contains(&[q, 1, property]));
+    let source = f.store.snapshot().await.unwrap();
+    let result = SimpleEntailment::new(EntailmentLimits::new(
+        NonZeroU32::new(8).unwrap(),
+        NonZeroU32::new(16).unwrap(),
+        NonZeroU32::new(256).unwrap(),
+        NonZeroU64::new(100_000).unwrap(),
+    ))
+    .check(&source, &target, &f.access)
+    .await
+    .unwrap();
+    // A model may make every resource a class while keeping q outside IP.
+    // IT's domain is IR x IP x IR, so this target triple term need not denote.
+    assert!(
+        !result.entailed,
+        "target resource typing must not supply its own missing denotation premise"
+    );
 }

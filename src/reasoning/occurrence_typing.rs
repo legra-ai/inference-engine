@@ -15,6 +15,9 @@ pub struct OccurrenceTypingReport {
     pub occurrences: u64,
     /// Novel RDF typing conclusions, excluding asserted/inferred duplicates.
     pub inferred: u64,
+    /// Target triple-term appearances lacking an established resource fact.
+    /// Their denotation must be established through construction, never assumed.
+    pub deferred_triple_terms: u64,
 }
 
 /// Failure of the complete occurrence-typing phase; discard partial staging.
@@ -62,7 +65,9 @@ impl<E: Error + 'static> Error for OccurrenceTypingError<E> {
 /// Execute shared rdfD2/rdfs4 over authoritative recursive appearances.
 ///
 /// Source admits both clauses. Target context admits rdfs4 only, never predicate
-/// typing. The caller selects source/target snapshots and schedules source
+/// typing, and defers new whole triple-term resource facts until construction
+/// establishes their denotation. Atomic components are still traversed and typed.
+/// The caller validates target literals before this phase, selects snapshots and schedules source
 /// consistency before target augmentation. This phase does not close newly staged
 /// triples recursively, inspect lexical payloads or construct proposition terms.
 pub struct Rdf12OccurrenceTyper {
@@ -136,6 +141,10 @@ impl Rdf12OccurrenceTyper {
                     .await
                     .map_err(ReasoningError::Storage)?
                 {
+                    continue;
+                }
+                if self.role == LiteralRole::TargetContext && cursor.current_is_triple_term() {
+                    report.deferred_triple_terms += 1;
                     continue;
                 }
                 Self::cancel(store)?;

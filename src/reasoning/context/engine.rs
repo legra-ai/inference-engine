@@ -107,6 +107,7 @@ impl Rdfs12Context {
                 seeded: seeds.inferred(),
                 inferred,
                 occurrences: terms.occurrences,
+                deferred_triple_terms: terms.deferred_triple_terms,
                 literals: literals.occurrences,
                 lexical_bytes: literals.bytes,
                 core,

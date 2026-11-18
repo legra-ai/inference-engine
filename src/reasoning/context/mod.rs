@@ -47,6 +47,9 @@ pub struct Rdfs12TargetReport {
     pub inferred: u64,
     /// Original target term appearances inspected for resource typing.
     pub occurrences: u64,
+    /// Original target triple-term appearances awaiting validated construction.
+    /// Their resource denotation has not been assumed from target occurrence.
+    pub deferred_triple_terms: u64,
     /// Original target literal appearances inspected, including duplicates.
     pub literals: u64,
     /// Exact streamed lexical bytes across those literal appearances.
