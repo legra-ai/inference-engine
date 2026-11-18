@@ -2,12 +2,14 @@
 #[allow(dead_code)]
 mod source_support;
 use inference_engine::reasoning::{
-    Evidence, LiteralRole, LiteralTypingError, Rdfs12Context, Rdfs12ContextError,
-    Rdfs12ContextOutcome, ReasoningStore, TripleSource,
+    Evidence, LiteralError, LiteralRole, LiteralTypingError, Rdfs12Context, Rdfs12ContextConfig,
+    Rdfs12ContextError, Rdfs12ContextOutcome, Rdfs12SourceError, ReasoningStore, TripleSource,
 };
+use iri_rfc3987::Iri;
 use rdf_reasoning::Rdf12Datatype;
+use rdf_structural_model::Literal;
 use source_support::{Diagnostics, Fixture, MemoryStore, context_config};
-use std::io;
+use std::{io, num::NonZeroU64};
 
 type Target = <MemoryStore as ReasoningStore>::Snapshot;
 async fn target(rows: impl IntoIterator<Item = [u64; 3]>) -> Target {
@@ -95,7 +97,7 @@ async fn target_literal_errors_retain_the_target_role_and_never_become_source_co
         .await
         .unwrap_err();
     assert!(
-        matches!(error, Rdfs12ContextError::Literals(LiteralTypingError::Literal { occurrence, .. })
+        matches!(error, Rdfs12ContextError::Literals(LiteralTypingError::Literal { occurrence, error: LiteralError::Lexical { .. } })
         if occurrence.root == root && occurrence.role == LiteralRole::TargetContext)
     );
     assert!(diagnostics.0.is_empty());
@@ -124,4 +126,132 @@ async fn late_target_cursor_failure_cannot_prepare_partial_context() {
         f.store.inner.inferred.contains(&[numbered, 1, cmp]),
         "failure followed target writes"
     );
+}
+
+#[tokio::test]
+async fn target_literals_close_core_with_target_proofs_and_separate_source_counters() {
+    let mut f = Fixture::new();
+    let s = f.iri("urn:example:s");
+    let p = f.iri("urn:example:p");
+    let string = f.iri(Rdf12Datatype::String.iri());
+    let class = f.iri("urn:example:TargetClass");
+    let literal = f.literal("hello");
+    f.store.inner.asserted.insert([string, 2, class]);
+    let root = [s, p, literal];
+    let result = Rdfs12Context::new(context_config())
+        .run(
+            &mut f.store,
+            &f.access,
+            &target([root]).await,
+            &mut Diagnostics::default(),
+        )
+        .await
+        .unwrap();
+    let Rdfs12ContextOutcome::Prepared { source, target } = result else {
+        panic!("unexpected conflict")
+    };
+    assert_eq!(source.lexical_bytes, 0);
+    assert_eq!(source.literals, 0);
+    assert_eq!(target.lexical_bytes, 5);
+    assert_eq!(target.literals, 1);
+    assert!(f.store.inner.inferred.contains(&[literal, 1, class]));
+    assert!(!f.store.inner.inferred.contains(&root));
+    assert!(f.store.inner.evidence.iter().any(|proof| matches!(&proof.evidence,
+        Evidence::Literal { occurrence, .. } if occurrence.root == root && occurrence.role == LiteralRole::TargetContext)));
+    let encoded = serde_json::to_string(&result).unwrap();
+    assert_eq!(
+        serde_json::from_str::<Rdfs12ContextOutcome>(&encoded).unwrap(),
+        result
+    );
+    assert_eq!(
+        postcard::from_bytes::<Rdfs12ContextOutcome>(&postcard::to_allocvec(&result).unwrap())
+            .unwrap(),
+        result
+    );
+    let config = serde_json::to_string(&context_config()).unwrap();
+    assert!(
+        serde_json::from_str::<Rdfs12ContextConfig>(&config.replacen("{", "{\"unknown\":1,", 1))
+            .is_err()
+    );
+    let decoded: Rdfs12ContextConfig =
+        postcard::from_bytes(&postcard::to_allocvec(&context_config()).unwrap()).unwrap();
+    assert_eq!(serde_json::to_string(&decoded).unwrap(), config);
+}
+
+#[tokio::test]
+async fn target_literal_datatype_metadata_is_not_appearing_container_vocabulary() {
+    let mut f = Fixture::new();
+    let numbered = "http://www.w3.org/1999/02/22-rdf-syntax-ns#_937";
+    let metadata = Literal::typed("", Iri::parse(numbered).unwrap().into())
+        .unwrap()
+        .metadata()
+        .clone();
+    let literal = f.literal_metadata("opaque", metadata);
+    let s = f.iri("urn:example:s");
+    let p = f.iri("urn:example:p");
+    let result = Rdfs12Context::new(context_config())
+        .run(
+            &mut f.store,
+            &f.access,
+            &target([[s, p, literal]]).await,
+            &mut Diagnostics::default(),
+        )
+        .await
+        .unwrap();
+    let Rdfs12ContextOutcome::Prepared { target, .. } = result else {
+        panic!("unexpected conflict")
+    };
+    assert_eq!(target.seeded, 0);
+    let key = f.iri(numbered);
+    let cmp = f.iri("http://www.w3.org/2000/01/rdf-schema#ContainerMembershipProperty");
+    assert!(!f.store.inner.inferred.contains(&[key, 1, cmp]));
+    assert!(!f.store.inner.inferred.contains(&[literal, 1, key]));
+}
+
+#[tokio::test]
+async fn source_errors_and_target_metadata_or_budget_failures_do_not_prepare_context() {
+    let mut f = Fixture::new();
+    let s = f.iri("urn:example:s");
+    let p = f.iri("urn:example:p");
+    let bad = f.literal("\0");
+    f.store.inner.asserted.insert([s, p, bad]);
+    assert!(matches!(
+        Rdfs12Context::new(context_config())
+            .run(
+                &mut f.store,
+                &f.access,
+                &UnreadableTarget,
+                &mut Diagnostics::default()
+            )
+            .await,
+        Err(Rdfs12ContextError::Source(Rdfs12SourceError::Literals(_)))
+    ));
+    for corrupt_identity in [false, true] {
+        let mut f = Fixture::new();
+        let s = f.iri("urn:example:s");
+        let p = f.iri("urn:example:p");
+        let numbered = f.iri("http://www.w3.org/1999/02/22-rdf-syntax-ns#_937");
+        let mut config = context_config();
+        if corrupt_identity {
+            f.corrupt_container_classification();
+        } else {
+            config.target.axioms = NonZeroU64::new(1).unwrap();
+        }
+        let result = Rdfs12Context::new(config)
+            .run(
+                &mut f.store,
+                &f.access,
+                &target([[s, p, numbered]]).await,
+                &mut Diagnostics::default(),
+            )
+            .await;
+        if corrupt_identity {
+            assert!(matches!(
+                result,
+                Err(Rdfs12ContextError::VocabularyIdentity)
+            ));
+        } else {
+            assert!(matches!(result, Err(Rdfs12ContextError::Reasoning(_))));
+        }
+    }
 }
