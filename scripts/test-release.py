@@ -1,8 +1,10 @@
 """Regression tests for alpha identity, complete archives and retry verification."""
 import hashlib
 import importlib.util
+import io
 import json
 import subprocess
+import tarfile
 from pathlib import Path
 import tempfile
 import tomllib
@@ -17,6 +19,26 @@ def load(name):
     return module
 
 class ReleaseTests(unittest.TestCase):
+    def test_python_source_archive_cannot_omit_a_library_module(self):
+        packages = load('check-package')
+        omitted = 'src/reasoning/target/grounding.rs'
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'inference_engine-0.1.0a2.tar.gz'
+            files = {p.relative_to(ROOT).as_posix() for p in (ROOT / 'src').rglob('*.rs')}
+            self.assertIn(omitted, files)
+            files.remove(omitted)
+            files.update(['bindings/python/src/lib.rs', 'tests/public_api.rs', 'build.rs',
+                          'LICENSE-MIT', 'LICENSE-APACHE'])
+            with tarfile.open(path, 'w:gz') as archive:
+                for name in sorted(files):
+                    payload = b'fixture'
+                    member = tarfile.TarInfo('inference_engine-0.1.0a2/' + name)
+                    member.size = len(payload)
+                    archive.addfile(member, io.BytesIO(payload))
+            with patch.object(packages.subprocess, 'run'):
+                with self.assertRaisesRegex(ValueError, 'omits Rust source ' + omitted):
+                    packages.check(path)
+
     def test_windows_checkout_preserves_pinned_w3c_fixture_bytes(self):
         fixture = 'tests/fixtures/rdf12-semantics/manifest.ttl'
         original = (ROOT / fixture).read_bytes()

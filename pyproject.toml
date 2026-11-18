@@ -30,4 +30,4 @@ include = [
   {path = "build.rs", format = "sdist"},
   {path = "rust-toolchain.toml", format = "sdist"},
 ]
-exclude = ["**/target/**/*", "**/__pycache__/**/*", ".cargo/**/*"]
+exclude = ["target/**/*", "**/__pycache__/**/*", ".cargo/**/*"]
