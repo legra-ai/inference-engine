@@ -129,46 +129,26 @@ impl Rdf12PropositionConstructor {
         S: Rdf12TripleTermStore,
         C: TripleCursor<Term = S::Term, Error = S::Error>,
     {
+        let mut phase = self.begin(store).await?;
+        while let Some(candidate) = self.next(candidates, store, &mut phase.report).await? {
+            phase.candidate(store, candidate).await?;
+        }
+        Self::cancel(store)?;
+        Ok(phase.report)
+    }
+    pub(super) async fn begin<S: Rdf12TripleTermStore>(
+        &self,
+        store: &mut S,
+    ) -> Result<PropositionPhase<S::Snapshot>, ReasoningError<S::Error>> {
         Self::cancel(store)?;
         let clause = PropositionClause::compile(Rdf12PropositionRuleId::Grdfs14, store).await?;
         let source = store.snapshot().await.map_err(ReasoningError::Storage)?;
-        let mut report = PropositionReport::default();
-        while let Some(candidate) = self.next(candidates, store, &mut report).await? {
-            let bindings = clause
-                .triple
-                .bind(&candidate, std::array::from_fn(|_| None))
-                .ok_or(ReasoningError::UnsupportedPropositionRule(clause.id))?;
-            // bounded: precisely three fixed shared premise tuples per candidate.
-            let mut premises = std::array::from_fn(|_| candidate.clone());
-            let mut supported = true;
-            for (index, pattern) in clause.body.iter().enumerate() {
-                let premise = pattern
-                    .ground(&bindings)
-                    .ok_or(ReasoningError::UnsupportedPropositionRule(clause.id))?;
-                let mut probe = source
-                    .scan(premise.clone().map(Some))
-                    .await
-                    .map_err(ReasoningError::Storage)?;
-                let mut found = false;
-                while let Some(row) = self.next(&mut probe, store, &mut report).await? {
-                    if row != premise {
-                        return Err(ReasoningError::InvalidProbe);
-                    }
-                    found = true;
-                }
-                if !found {
-                    supported = false;
-                    break;
-                }
-                premises[index] = premise;
-            }
-            if supported {
-                self.emit(&clause, &bindings, premises, store, &mut report)
-                    .await?;
-            }
-        }
-        Self::cancel(store)?;
-        Ok(report)
+        Ok(PropositionPhase {
+            constructor: Self::new(self.limits),
+            clause,
+            source,
+            report: PropositionReport::default(),
+        })
     }
     async fn emit<S: Rdf12TripleTermStore>(
         &self,
@@ -223,14 +203,22 @@ impl Rdf12PropositionConstructor {
         Self::cancel(store)?;
         let row = cursor.next().await.map_err(ReasoningError::Storage)?;
         if row.is_some() {
-            if report.matches == self.limits.matches.get() {
-                return Err(ReasoningError::LimitExceeded(Limit::Matches));
-            }
-            report.matches += 1;
-            crate::cooperative::checkpoint(report.matches).await;
-            Self::cancel(store)?;
+            self.charge(store, report).await?;
         }
         Ok(row)
+    }
+    async fn charge<S: ReasoningStore>(
+        &self,
+        store: &mut S,
+        report: &mut PropositionReport,
+    ) -> Result<(), ReasoningError<S::Error>> {
+        Self::cancel(store)?;
+        if report.matches == self.limits.matches.get() {
+            return Err(ReasoningError::LimitExceeded(Limit::Matches));
+        }
+        report.matches += 1;
+        crate::cooperative::checkpoint(report.matches).await;
+        Self::cancel(store)
     }
     fn cancel<S: ReasoningStore>(store: &S) -> Result<(), ReasoningError<S::Error>> {
         if store.is_cancelled() {
@@ -238,5 +226,74 @@ impl Rdf12PropositionConstructor {
         } else {
             Ok(())
         }
+    }
+}
+
+/// A single fixed-premise-snapshot phase shared by manual and automatic selection.
+pub(super) struct PropositionPhase<P: TripleSource> {
+    constructor: Rdf12PropositionConstructor,
+    clause: PropositionClause<P::Term>,
+    source: P,
+    pub(super) report: PropositionReport,
+}
+impl<P: TripleSource> PropositionPhase<P> {
+    pub(super) fn source(&self) -> &P {
+        &self.source
+    }
+    pub(super) async fn candidate<S>(
+        &mut self,
+        store: &mut S,
+        candidate: [P::Term; 3],
+    ) -> Result<(), ReasoningError<P::Error>>
+    where
+        S: Rdf12TripleTermStore<Term = P::Term, Error = P::Error>,
+    {
+        Rdf12PropositionConstructor::cancel(store)?;
+        let clause = &self.clause;
+        let bindings = clause
+            .triple
+            .bind(&candidate, std::array::from_fn(|_| None))
+            .ok_or(ReasoningError::UnsupportedPropositionRule(clause.id))?;
+        // bounded: exactly three shared typing premises, independent of graph size.
+        let mut premises = std::array::from_fn(|_| candidate.clone());
+        for (index, pattern) in clause.body.iter().enumerate() {
+            let premise = pattern
+                .ground(&bindings)
+                .ok_or(ReasoningError::UnsupportedPropositionRule(clause.id))?;
+            let mut probe = self
+                .source
+                .scan(premise.clone().map(Some))
+                .await
+                .map_err(ReasoningError::Storage)?;
+            let mut found = false;
+            while let Some(row) = self
+                .constructor
+                .next(&mut probe, store, &mut self.report)
+                .await?
+            {
+                if row != premise {
+                    return Err(ReasoningError::InvalidProbe);
+                }
+                found = true;
+            }
+            if !found {
+                return Ok(());
+            }
+            premises[index] = premise;
+        }
+        self.constructor
+            .emit(clause, &bindings, premises, store, &mut self.report)
+            .await
+    }
+    pub(super) async fn selected<S>(
+        &mut self,
+        store: &mut S,
+        candidate: [P::Term; 3],
+    ) -> Result<(), ReasoningError<P::Error>>
+    where
+        S: Rdf12TripleTermStore<Term = P::Term, Error = P::Error>,
+    {
+        self.constructor.charge(store, &mut self.report).await?;
+        self.candidate(store, candidate).await
     }
 }
