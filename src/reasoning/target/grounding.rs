@@ -8,7 +8,7 @@ use crate::{
 };
 enum Task<T> {
     Visit(T),
-    Finish,
+    Finish(T, [T; 3]),
 }
 pub(super) struct Grounding {
     limits: TargetConstructionLimits,
@@ -83,7 +83,7 @@ impl Grounding {
                         .map_err(ReasoningError::Storage)?
                     {
                         self.slots(tasks.len(), values.len(), 4)?;
-                        tasks.push(Task::Finish);
+                        tasks.push(Task::Finish(term, parts.clone()));
                         for part in parts.into_iter().rev() {
                             tasks.push(Task::Visit(part));
                         }
@@ -92,7 +92,7 @@ impl Grounding {
                         values.push(term);
                     }
                 }
-                Task::Finish => {
+                Task::Finish(original, components) => {
                     let object = values.pop().expect("three grounded triple components");
                     let predicate = values.pop().expect("grounded predicate");
                     let subject = values.pop().expect("grounded subject");
@@ -101,6 +101,9 @@ impl Grounding {
                         .resolve_triple_term(candidate.clone())
                         .await
                         .map_err(ReasoningError::Storage)?;
+                    if candidate == components && key != original {
+                        return Err(TargetConstructionError::Identity);
+                    }
                     if access
                         .triple_term(&key)
                         .await

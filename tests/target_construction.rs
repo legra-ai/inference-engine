@@ -5,7 +5,8 @@ use inference_engine::{
     entailment::{EntailmentLimits, SimpleEntailment},
     reasoning::{
         ExecutionProfile, PropositionLimits, Rdf12TargetConstructor, Rdfs12Context,
-        Rdfs12ContextOutcome, Reasoner, ReasoningStore, TargetConstructionLimits,
+        Rdfs12ContextOutcome, Reasoner, ReasoningError, ReasoningStore, TargetConstructionError,
+        TargetConstructionLimits,
     },
 };
 use source_support::{Diagnostics, Fixture, MemoryStore, context_config};
@@ -156,5 +157,105 @@ async fn target_only_predicate_does_not_acquire_a_property_premise() {
             .contains(&[candidate[1], 1, property])
             .await
             .unwrap()
+    );
+}
+
+#[tokio::test]
+async fn unanchored_blanks_share_a_selected_noninjective_representative() {
+    let (mut f, _, _, _) = fixture(false, true).await;
+    let p = f.iri("urn:example:p");
+    let rdf_type = f.iri("http://www.w3.org/1999/02/22-rdf-syntax-ns#type");
+    let proposition = f.iri("http://www.w3.org/2000/01/rdf-schema#Proposition");
+    let subproperty = f.iri("http://www.w3.org/2000/01/rdf-schema#subPropertyOf");
+    let a = f.blank(1, "unbound-a").unwrap();
+    let b = f.blank(1, "unbound-b").unwrap();
+    let x = f.blank(1, "unbound-x").unwrap();
+    let quoted = f.quoted([a, p, b]).await;
+    let target = MemoryStore::new([[x, subproperty, quoted], [x, rdf_type, proposition]])
+        .snapshot()
+        .await
+        .unwrap();
+    prepare(&mut f, &target).await;
+    constructor()
+        .run(&mut f.store, &f.access, &target)
+        .await
+        .unwrap();
+    close(&mut f).await;
+    assert!(matches(&mut f, &target).await);
+    assert!(
+        f.store
+            .inner
+            .constructed
+            .contains_key(&[rdf_type, p, rdf_type])
+    );
+    assert!(!f.store.inner.inferred.contains(&[a, p, b]));
+}
+
+#[tokio::test]
+async fn construction_preserves_the_unestablished_target_denotation_guard() {
+    let mut f = Fixture::new();
+    let resource = f.iri("http://www.w3.org/2000/01/rdf-schema#Resource");
+    let class = f.iri("http://www.w3.org/2000/01/rdf-schema#Class");
+    let subclass = f.iri("http://www.w3.org/2000/01/rdf-schema#subClassOf");
+    let a = f.iri("urn:example:a");
+    let q = f.iri("urn:example:untyped-q");
+    let b = f.iri("urn:example:b");
+    let quoted = f.quoted([a, q, b]).await;
+    let v = f.blank(1, "v").unwrap();
+    f.store.inner.asserted.insert([resource, subclass, class]);
+    let target = MemoryStore::new([[v, subclass, quoted]])
+        .snapshot()
+        .await
+        .unwrap();
+    prepare(&mut f, &target).await;
+    let report = constructor()
+        .run(&mut f.store, &f.access, &target)
+        .await
+        .unwrap();
+    assert_eq!(report.propositions.inferred, 0);
+    close(&mut f).await;
+    assert!(!matches(&mut f, &target).await);
+    assert!(!f.store.contains(&[quoted, 1, resource]).await.unwrap());
+}
+
+#[tokio::test]
+async fn deeper_negative_search_keeps_storage_depth_failure_as_an_error() {
+    let mut f = Fixture::new();
+    let s = f.iri("urn:example:s");
+    let claims = f.iri("urn:example:claims");
+    let a = f.iri("urn:example:a");
+    let p = f.iri("urn:example:p");
+    let c = f.iri("urn:example:c");
+    let q = f.iri("urn:example:q");
+    let d = f.iri("urn:example:d");
+    let inner = f.quoted([c, q, d]).await;
+    let outer = f.quoted([a, p, inner]).await;
+    f.store.inner.asserted.insert([s, claims, outer]);
+    let v = f.blank(1, "v").unwrap();
+    let pattern = f.quoted([a, p, v]).await;
+    let proposition = f.iri("http://www.w3.org/2000/01/rdf-schema#Proposition");
+    let target = MemoryStore::new([[s, claims, pattern], [s, claims, v], [v, 1, proposition]])
+        .snapshot()
+        .await
+        .unwrap();
+    prepare(&mut f, &target).await;
+    for _ in 0..2 {
+        constructor()
+            .run(&mut f.store, &f.access, &target)
+            .await
+            .unwrap();
+        close(&mut f).await;
+        assert!(!matches(&mut f, &target).await);
+    }
+    let error = constructor()
+        .run(&mut f.store, &f.access, &target)
+        .await
+        .unwrap_err();
+    let TargetConstructionError::Reasoning(ReasoningError::Storage(error)) = error else {
+        panic!("expected the backend's actual substituted-depth error")
+    };
+    assert_eq!(
+        error.to_string(),
+        "substituted triple-term nesting limit exceeded"
     );
 }
