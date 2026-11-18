@@ -112,3 +112,27 @@ fn borrowed_source_error_retains_error_source(
 ) {
     let _ = std::error::Error::source(error);
 }
+
+#[allow(dead_code)]
+fn context_future_is_send<S, A, T, D>(
+    context: &inference_engine::reasoning::Rdfs12Context,
+    store: &mut S,
+    access: &A,
+    target: &T,
+    sink: &mut D,
+) where
+    S: Rdf12WitnessStore + Rdf12TripleTermStore,
+    A: inference_engine::reasoning::LiteralTermAccess<Term = S::Term, Error = S::Error>
+        + inference_engine::reasoning::Rdf12ContainerAccess,
+    T: inference_engine::reasoning::TripleSource<Term = S::Term, Error = S::Error>,
+    D: DatatypeConflictSink<Term = S::Term, Error = S::Error>,
+{
+    require_send(context.run(store, access, target, sink));
+}
+
+#[allow(dead_code)]
+fn borrowed_context_error_retains_error_source(
+    error: &inference_engine::reasoning::Rdfs12ContextError<&str, std::io::Error>,
+) {
+    let _ = std::error::Error::source(error);
+}

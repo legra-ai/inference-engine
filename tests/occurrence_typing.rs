@@ -52,6 +52,7 @@ async fn source_types_nested_predicates_and_all_terms_with_occurrence_evidence()
         .unwrap();
     assert_eq!(report.occurrences, 6);
     assert_eq!(report.inferred, 8);
+    assert_eq!(report.deferred_triple_terms, 0);
     let property = store.iri("http://www.w3.org/1999/02/22-rdf-syntax-ns#Property");
     let resource = store.iri("http://www.w3.org/2000/01/rdf-schema#Resource");
     for key in [7, 8, 90, 10, 11, 12] {
@@ -90,8 +91,36 @@ async fn source_types_nested_predicates_and_all_terms_with_occurrence_evidence()
 }
 #[tokio::test]
 async fn target_context_cannot_type_its_predicates_as_source_properties() {
-    let mut store = Store::new([[7, 8, 90]]);
-    let roots = store
+    let roots = Store::new([[7, 8, 90]])
+        .snapshot()
+        .await
+        .unwrap()
+        .scan([None; 3])
+        .await
+        .unwrap();
+    let mut store = Store::new([]);
+    let mut cursor =
+        Rdf12OccurrenceCursor::new(roots, &Terms, LiteralRole::TargetContext, limits());
+    let report = Rdf12OccurrenceTyper::new(NonZeroU64::new(6).unwrap(), LiteralRole::TargetContext)
+        .run(&mut store, &mut cursor)
+        .await
+        .unwrap();
+    assert_eq!(report.inferred, 5);
+    assert_eq!(report.deferred_triple_terms, 1);
+    let resource = store.iri("http://www.w3.org/2000/01/rdf-schema#Resource");
+    assert!(!store.inferred.contains(&[90, TYPE, resource]));
+    assert!(store.evidence.iter().all(|i|matches!(&i.evidence,Evidence::Occurrence{rule:R::Rdfs4,occurrence} if occurrence.role==LiteralRole::TargetContext)));
+    let property = store.iri("http://www.w3.org/1999/02/22-rdf-syntax-ns#Property");
+    assert!(!store.inferred.contains(&[8, TYPE, property]));
+    assert!(!store.inferred.contains(&[11, TYPE, property]));
+}
+
+#[tokio::test]
+async fn target_triple_terms_with_established_resource_facts_are_not_deferred() {
+    let mut store = Store::new([]);
+    let resource = store.iri("http://www.w3.org/2000/01/rdf-schema#Resource");
+    store.asserted.insert([90, TYPE, resource]);
+    let roots = Store::new([[7, 8, 90]])
         .snapshot()
         .await
         .unwrap()
@@ -100,15 +129,13 @@ async fn target_context_cannot_type_its_predicates_as_source_properties() {
         .unwrap();
     let mut cursor =
         Rdf12OccurrenceCursor::new(roots, &Terms, LiteralRole::TargetContext, limits());
-    let report = Rdf12OccurrenceTyper::new(NonZeroU64::new(6).unwrap(), LiteralRole::TargetContext)
+    let report = Rdf12OccurrenceTyper::new(NonZeroU64::new(5).unwrap(), LiteralRole::TargetContext)
         .run(&mut store, &mut cursor)
         .await
         .unwrap();
-    assert_eq!(report.inferred, 6);
-    assert!(store.evidence.iter().all(|i|matches!(&i.evidence,Evidence::Occurrence{rule:R::Rdfs4,occurrence} if occurrence.role==LiteralRole::TargetContext)));
-    let property = store.iri("http://www.w3.org/1999/02/22-rdf-syntax-ns#Property");
-    assert!(!store.inferred.contains(&[8, TYPE, property]));
-    assert!(!store.inferred.contains(&[11, TYPE, property]));
+    assert_eq!(report.inferred, 5);
+    assert_eq!(report.deferred_triple_terms, 0);
+    assert!(!store.inferred.contains(&[90, TYPE, resource]));
 }
 #[tokio::test]
 async fn role_mismatch_is_rejected_before_roots_are_read() {

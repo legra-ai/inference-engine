@@ -4,7 +4,7 @@ mod source_support;
 mod syntax;
 use inference_engine::{
     entailment::{EntailmentLimits, SimpleEntailment},
-    reasoning::{Rdfs12Source, Rdfs12SourceOutcome, ReasoningStore},
+    reasoning::{Rdfs12Context, Rdfs12ContextOutcome, ReasoningStore},
 };
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -55,12 +55,13 @@ struct Case {
 enum Stage {
     Syntax,
     Source,
+    Context,
     Matching,
 }
 #[derive(Serialize)]
 #[serde(rename_all = "kebab-case")]
 enum Missing {
-    TargetContext,
+    TargetRelevantConstruction,
     CompleteNegativeDecision,
     SourceConflictPolicy,
 }
@@ -181,41 +182,37 @@ async fn execute(case: &Case) -> Status {
         Ok(rows) => rows,
         Err(error) => return failure(Stage::Syntax, error),
     };
-    if case.requires.contains(&Requirement::TargetContext) {
-        return Status::Unsupported {
-            missing: Missing::TargetContext,
-        };
-    }
+    let target = match source_support::MemoryStore::new(target).snapshot().await {
+        Ok(view) => view,
+        Err(error) => return failure(Stage::Matching, error),
+    };
     parser.fixture.store.inner.asserted.extend(source);
     let mut diagnostics = source_support::Diagnostics::default();
-    let prepared = Rdfs12Source::new(source_support::config())
+    let prepared = Rdfs12Context::new(source_support::context_config())
         .run(
             &mut parser.fixture.store,
             &parser.fixture.access,
+            &target,
             &mut diagnostics,
         )
         .await;
     match prepared {
         Err(error) => {
             return Status::Error {
-                stage: Stage::Source,
+                stage: Stage::Context,
                 message: error.to_string(),
             };
         }
-        Ok(Rdfs12SourceOutcome::Conflicting(_)) => {
+        Ok(Rdfs12ContextOutcome::SourceConflicting(_)) => {
             return Status::Unsupported {
                 missing: Missing::SourceConflictPolicy,
             };
         }
-        Ok(Rdfs12SourceOutcome::Prepared(_)) => {}
+        Ok(Rdfs12ContextOutcome::Prepared { .. }) => {}
     }
     let source = match parser.fixture.store.snapshot().await {
         Ok(view) => view,
         Err(error) => return failure(Stage::Source, error),
-    };
-    let target = match source_support::MemoryStore::new(target).snapshot().await {
-        Ok(view) => view,
-        Err(error) => return failure(Stage::Matching, error),
     };
     let matcher = SimpleEntailment::new(EntailmentLimits::new(
         NonZeroU32::new(128).unwrap(),
@@ -237,7 +234,15 @@ async fn execute(case: &Case) -> Status {
             observed: true,
         },
         Ok(_) => Status::Unsupported {
-            missing: Missing::CompleteNegativeDecision,
+            missing: if case.requires.contains(&Requirement::TargetContext)
+                && case
+                    .requires
+                    .contains(&Requirement::PropositionConstruction)
+            {
+                Missing::TargetRelevantConstruction
+            } else {
+                Missing::CompleteNegativeDecision
+            },
         },
     }
 }

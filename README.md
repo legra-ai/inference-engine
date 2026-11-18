@@ -24,6 +24,10 @@ source-only default datatype conflicts and check simple source-to-target entailm
 with nested blank-node substitution. A [source-preparation controller](docs/rdfs-source.md)
 composes these source phases before target augmentation. See also
 [the individual adapter and execution contracts](docs/rdfs-subclass.md).
+The [target-context controller](docs/rdfs-context.md) then processes original
+atomic target resources, literals and container vocabulary after source diagnostics.
+Whole triple terms without established resource facts are explicitly deferred
+until construction establishes their denotation.
 
 **Full RDFS 1.2 entailment is in development.** Complete consistency checking,
 adequate target-relevant construction and the integrated entailment procedure
@@ -65,9 +69,10 @@ partial coverage, not full RDF 1.2 or RDFS conformance.
 
 A separate harness executes the eighteen authored RDF 1.2 regression cases
 published in `rdf-reasoning` 2.17.0. It parses every source and target with
-independent blank-node scopes, then uses the native source-preparation and
-simple-matching APIs. Eight cases have positive proofs; six require target-context
-execution and four require a complete negative-decision procedure. Those ten
+independent blank-node scopes, then uses the native ordered source/context and
+simple-matching APIs. Ten cases have positive proofs; three require adequate
+target-relevant proposition construction and five require a complete
+negative-decision procedure. Those eight
 cases are reported as unsupported, separately from failures and execution errors.
 The original manifest, hashes and both licenses are included in the crate.
 

@@ -156,6 +156,7 @@ pub struct Rdf12OccurrenceCursor<'a, A: EntailmentTerms, C: TripleCursor> {
     occurrences: u64,
     steps: u64,
     finished: bool,
+    current_triple_term: bool,
 }
 impl<'a, A, C> Rdf12OccurrenceCursor<'a, A, C>
 where
@@ -175,11 +176,18 @@ where
             occurrences: 0,
             steps: 0,
             finished: false,
+            current_triple_term: false,
         }
     }
     /// Explicit source/target role selected before any traversal I/O.
     pub const fn role(&self) -> LiteralRole {
         self.role
+    }
+
+    // The structural lookup performed by next() classifies its last emitted term.
+    // This reuses authoritative metadata without another read or unmetered lookup.
+    pub(super) const fn current_is_triple_term(&self) -> bool {
+        self.current_triple_term
     }
 
     /// Emit one actual appearance, revisiting repeated keys at distinct paths.
@@ -236,6 +244,7 @@ where
                     .map(|frame| TermPosition::at(frame.next - 1))
                     .collect(),
             };
+            self.current_triple_term = nested.is_some();
             if let Some(triple) = nested {
                 if self.frames.len() == self.limits.depth.get() as usize {
                     return Err(OccurrenceError::DepthLimit);
