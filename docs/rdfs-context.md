@@ -17,13 +17,22 @@ clauses. These phases reuse the existing semantic definitions and streaming APIs
 The target does not become source input, and source consistency is not rerun on
 the augmented store.
 
-The target occurrence phase uses `rdfs4` only. An arbitrary target predicate
+The target occurrence phase uses `rdfs4` for atomic terms only. An arbitrary target predicate
 does not gain `rdf:Property` merely by appearing in a target triple. Direct and
 nested canonical `rdf:_n` terms select their shared ground vocabulary axioms;
 literal datatype metadata does not count as an appearing IRI. No target triple or
 quoted content is asserted. Target literal and occurrence evidence retains its
 role, original root and structural path. Container axioms retain their shared
 axiom authority, without fabricating an asserted target premise.
+
+Whole target triple terms do not automatically acquire resource facts. The
+[triple interpretation function](https://www.w3.org/TR/2026/CRD-rdf12-semantics-20260924/#simple-interpretations)
+takes a property as its middle argument. An unconstructed target term may lack
+that established denotation, so deriving its resource membership can manufacture
+an invalid proof. Already established resource facts remain available; other
+whole-term appearances are counted in `deferred_triple_terms` for subsequent
+validated construction. Atomic components are still traversed. Literal metadata
+and payload validation precedes resource typing.
 
 `Prepared { source, target }` reports completed selected phases. It is neither a
 full consistency certificate nor an entailment verdict. Adequately substituted
@@ -73,5 +82,8 @@ use checked arithmetic. Writable stores need only be `Send`; the future remains
 The [context integration tests](../tests/rdfs_context.rs) cover ordering, nested
 container selection, forbidden target assertion/predicate typing, lexical roles,
 metadata isolation, late errors, budgets, identity checks and serialized reports.
+They also include a counterexample with a source making every resource a class
+and a target-only triple term whose predicate is not established as a property.
+That term must not generate its own reflexive subclass proof.
 The authored eighteen-case harness now has ten positive proofs and eight explicit
 unsupported decisions. These measured results do not claim full RDFS conformance.

@@ -25,7 +25,9 @@ with nested blank-node substitution. A [source-preparation controller](docs/rdfs
 composes these source phases before target augmentation. See also
 [the individual adapter and execution contracts](docs/rdfs-subclass.md).
 The [target-context controller](docs/rdfs-context.md) then processes original
-target resources, literals and container vocabulary after source diagnostics.
+atomic target resources, literals and container vocabulary after source diagnostics.
+Whole triple terms without established resource facts are explicitly deferred
+until construction establishes their denotation.
 
 **Full RDFS 1.2 entailment is in development.** Complete consistency checking,
 adequate target-relevant construction and the integrated entailment procedure

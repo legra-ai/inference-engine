@@ -284,6 +284,7 @@ async fn an_unconstructed_target_triple_term_cannot_create_a_self_supporting_pro
         .await
         .unwrap();
     assert!(!f.store.inner.inferred.contains(&[q, 1, property]));
+    assert!(!f.store.inner.inferred.contains(&[quote, 1, resource]));
     let source = f.store.snapshot().await.unwrap();
     let result = SimpleEntailment::new(EntailmentLimits::new(
         NonZeroU32::new(8).unwrap(),

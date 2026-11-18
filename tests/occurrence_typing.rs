@@ -114,6 +114,29 @@ async fn target_context_cannot_type_its_predicates_as_source_properties() {
     assert!(!store.inferred.contains(&[8, TYPE, property]));
     assert!(!store.inferred.contains(&[11, TYPE, property]));
 }
+
+#[tokio::test]
+async fn target_triple_terms_with_established_resource_facts_are_not_deferred() {
+    let mut store = Store::new([]);
+    let resource = store.iri("http://www.w3.org/2000/01/rdf-schema#Resource");
+    store.asserted.insert([90, TYPE, resource]);
+    let roots = Store::new([[7, 8, 90]])
+        .snapshot()
+        .await
+        .unwrap()
+        .scan([None; 3])
+        .await
+        .unwrap();
+    let mut cursor =
+        Rdf12OccurrenceCursor::new(roots, &Terms, LiteralRole::TargetContext, limits());
+    let report = Rdf12OccurrenceTyper::new(NonZeroU64::new(5).unwrap(), LiteralRole::TargetContext)
+        .run(&mut store, &mut cursor)
+        .await
+        .unwrap();
+    assert_eq!(report.inferred, 5);
+    assert_eq!(report.deferred_triple_terms, 0);
+    assert!(!store.inferred.contains(&[90, TYPE, resource]));
+}
 #[tokio::test]
 async fn role_mismatch_is_rejected_before_roots_are_read() {
     let mut store = Store::new([]);
