@@ -62,6 +62,7 @@ impl Rdf12TargetConstructor {
             .has_goals(store, access, matches.patterns())
             .await?
         {
+            grounding.finish(store, access).await?;
             report.matching_steps = matches.steps();
             report.grounding_steps = grounding.steps();
             return Ok(report);
