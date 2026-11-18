@@ -2,33 +2,14 @@
 #[allow(dead_code)]
 mod source_support;
 use inference_engine::reasoning::{
-    Evidence, LiteralRole, LiteralTypingError, LiteralTypingLimits, OccurrenceLimits,
-    Rdfs12Context, Rdfs12ContextConfig, Rdfs12ContextError, Rdfs12ContextOutcome,
-    Rdfs12TargetConfig, ReasoningStore, RunLimits, TripleSource,
+    Evidence, LiteralRole, LiteralTypingError, Rdfs12Context, Rdfs12ContextError,
+    Rdfs12ContextOutcome, ReasoningStore, TripleSource,
 };
 use rdf_reasoning::Rdf12Datatype;
-use source_support::{Diagnostics, Fixture, MemoryStore, config};
-use std::{
-    io,
-    num::{NonZeroU32, NonZeroU64},
-};
+use source_support::{Diagnostics, Fixture, MemoryStore, context_config};
+use std::io;
 
 type Target = <MemoryStore as ReasoningStore>::Snapshot;
-fn n(value: u64) -> NonZeroU64 {
-    NonZeroU64::new(value).unwrap()
-}
-fn context_config() -> Rdfs12ContextConfig {
-    Rdfs12ContextConfig {
-        source: config(),
-        target: Rdfs12TargetConfig {
-            axioms: n(32),
-            traversal: OccurrenceLimits::new(NonZeroU32::new(8).unwrap(), n(10_000), n(30_000)),
-            literals: LiteralTypingLimits::new(n(10_000), n(1000), 100_000),
-            structural: RunLimits::new(NonZeroU32::new(32).unwrap(), n(3000), n(1_000_000)),
-            iri_bytes: NonZeroU32::new(4096).unwrap(),
-        },
-    }
-}
 async fn target(rows: impl IntoIterator<Item = [u64; 3]>) -> Target {
     MemoryStore::new(rows).snapshot().await.unwrap()
 }

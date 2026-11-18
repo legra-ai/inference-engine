@@ -7,8 +7,8 @@ use inference_engine::{
     reasoning::{
         DatatypeConflict, DatatypeConflictLimits, DatatypeConflictSink, Inference, LiteralReader,
         LiteralTermAccess, LiteralTypingLimits, OccurrenceLimits, PropositionLimits,
-        Rdf12ContainerAccess, Rdf12TripleTermStore, Rdf12WitnessStore, Rdfs12SourceConfig,
-        ReasoningStore, RunLimits,
+        Rdf12ContainerAccess, Rdf12TripleTermStore, Rdf12WitnessStore, Rdfs12ContextConfig,
+        Rdfs12SourceConfig, Rdfs12TargetConfig, ReasoningStore, RunLimits,
     },
 };
 use rdf_reasoning::{Rdf12ContainerProperty, Rdf12ExistentialAxiomId};
@@ -287,5 +287,20 @@ pub fn config() -> Rdfs12SourceConfig {
         propositions: PropositionLimits::new(n(3000), n(10_000)),
         conflicts: DatatypeConflictLimits::new(n(100), n(100_000)),
         iri_bytes: NonZeroU32::new(4096).unwrap(),
+    }
+}
+
+#[allow(dead_code)] // Shared by the context and authored-manifest binaries.
+pub fn context_config() -> Rdfs12ContextConfig {
+    let source = config();
+    Rdfs12ContextConfig {
+        source,
+        target: Rdfs12TargetConfig {
+            axioms: source.axioms,
+            traversal: source.traversal,
+            literals: source.literals,
+            structural: source.structural,
+            iri_bytes: source.iri_bytes,
+        },
     }
 }
