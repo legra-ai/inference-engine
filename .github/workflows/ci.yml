@@ -327,7 +327,7 @@ jobs:
         env:
           NPM_ARCHIVE: ${{ steps.npm.outputs.npm_archive }}
         run: npm publish "$GITHUB_WORKSPACE/$NPM_ARCHIVE" --tag alpha --access public --provenance --ignore-scripts
-      - uses: legra-ai/github-actions/.github/actions/verify-registry-publication@674c637085eaba8f16e5413ad7f6420bd9964891
+      - uses: legra-ai/github-actions/.github/actions/verify-registry-publication@b3cebd0e56098fb20bbf8bc2d5770b82d9020ddd
         with:
           registry: npm
           package: inference-engine
@@ -340,7 +340,7 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: pending-packages/
-      - uses: legra-ai/github-actions/.github/actions/verify-registry-publication@674c637085eaba8f16e5413ad7f6420bd9964891
+      - uses: legra-ai/github-actions/.github/actions/verify-registry-publication@b3cebd0e56098fb20bbf8bc2d5770b82d9020ddd
         with:
           registry: pypi
           package: inference-engine
