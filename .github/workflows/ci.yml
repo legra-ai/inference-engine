@@ -313,7 +313,7 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.writer.outputs.token }}
         run: python3 scripts/release-packages.py stage
-      - uses: legra-ai/github-actions/.github/actions/publish-tested-crate@4821c86278ed3b0a7d9b51504a42b4b777863aa0
+      - uses: legra-ai/github-actions/.github/actions/publish-tested-crate@b3cebd0e56098fb20bbf8bc2d5770b82d9020ddd
         with:
           crate: inference-engine
           version: ${{ needs.prepare.outputs.version }}
