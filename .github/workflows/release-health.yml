@@ -15,7 +15,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - uses: legra-ai/github-actions/.github/actions/monitor-release@4821c86278ed3b0a7d9b51504a42b4b777863aa0
+      - uses: legra-ai/github-actions/.github/actions/monitor-release@b3cebd0e56098fb20bbf8bc2d5770b82d9020ddd
         with:
           config: .github/release-health.json
           token: ${{ github.token }}
