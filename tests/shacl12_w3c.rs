@@ -44,7 +44,7 @@ impl RuleBackend for Backend {
             })
             .collect()
     }
-    async fn begin_layer(&mut self, _: &mut Work) -> Result<(), Failure> {
+    async fn begin_layer(&mut self, _: &[Rule<Self::Rule>], _: &mut Work) -> Result<(), Failure> {
         Ok(())
     }
     async fn execute(
@@ -92,7 +92,7 @@ impl RuleBackend for Backend {
         self.pending.clear().map_err(failure)?;
         Ok(added)
     }
-    async fn finish_layer(&mut self, _: &mut Work) -> Result<(), Failure> {
+    async fn finish_layer(&mut self, _: &[Rule<Self::Rule>], _: &mut Work) -> Result<(), Failure> {
         Ok(())
     }
     async fn finish(&mut self, _: &mut Work) -> Result<(), Failure> {

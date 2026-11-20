@@ -29,7 +29,7 @@ impl RuleBackend for Backend {
     async fn snapshot(&mut self) -> Result<(), io::Error> {
         Ok(())
     }
-    async fn begin_layer(&mut self, _: &mut Work) -> Result<(), io::Error> {
+    async fn begin_layer(&mut self, _: &[Rule<Self::Rule>], _: &mut Work) -> Result<(), io::Error> {
         Ok(())
     }
     async fn execute(&mut self, _: &u16, _: &(), _: u64, work: &mut Work) -> Result<(), io::Error> {
@@ -45,7 +45,11 @@ impl RuleBackend for Backend {
         self.merged += 1;
         Ok(self.additions)
     }
-    async fn finish_layer(&mut self, _: &mut Work) -> Result<(), io::Error> {
+    async fn finish_layer(
+        &mut self,
+        _: &[Rule<Self::Rule>],
+        _: &mut Work,
+    ) -> Result<(), io::Error> {
         Ok(())
     }
     async fn finish(&mut self, _: &mut Work) -> Result<(), io::Error> {

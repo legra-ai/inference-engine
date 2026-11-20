@@ -35,9 +35,10 @@ pub trait RuleBackend: Send {
     /// Freeze selected base plus the current attempt's inference graph.
     fn snapshot(&mut self) -> impl Future<Output = Result<Self::Snapshot, Self::Error>> + Send;
     /// Compute this layer's expected derived triples once before either phase.
-    /// The backend knows the current layer from its ordered plan lifecycle.
+    /// `rules` identifies exactly the preflight-checked rules in this layer.
     fn begin_layer(
         &mut self,
+        rules: &[Rule<Self::Rule>],
         work: &mut Work,
     ) -> impl Future<Output = Result<(), Self::Error>> + Send;
     /// Execute one rule against exactly `snapshot`, staging into a separate phase.
@@ -64,6 +65,7 @@ pub trait RuleBackend: Send {
     /// independently inferred by rules. Called only after a proved fixed point.
     fn finish_layer(
         &mut self,
+        rules: &[Rule<Self::Rule>],
         work: &mut Work,
     ) -> impl Future<Output = Result<(), Self::Error>> + Send;
     /// Remove temporary triples and their annotations, without publishing output.

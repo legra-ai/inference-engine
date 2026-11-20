@@ -37,7 +37,7 @@ impl Controller {
             work.charge()
                 .map_err(|_| ExecutionError::Limit(Limit::Work))?;
             backend
-                .begin_layer(&mut work)
+                .begin_layer(&plan.rules[start..end], &mut work)
                 .await
                 .map_err(ExecutionError::Backend)?;
             self.check(backend, &work)?;
@@ -63,7 +63,7 @@ impl Controller {
                 }
             }
             backend
-                .finish_layer(&mut work)
+                .finish_layer(rules, &mut work)
                 .await
                 .map_err(ExecutionError::Backend)?;
             self.check(backend, &work)?;

@@ -20,7 +20,11 @@ impl RuleBackend for Backend {
         self.snapshots.push(self.facts.clone());
         Ok(self.facts.clone())
     }
-    async fn begin_layer(&mut self, _: &mut Work) -> Result<(), Self::Error> {
+    async fn begin_layer(
+        &mut self,
+        _: &[Rule<Self::Rule>],
+        _: &mut Work,
+    ) -> Result<(), Self::Error> {
         Ok(())
     }
     async fn execute(
@@ -40,7 +44,11 @@ impl RuleBackend for Backend {
         self.facts.append(&mut self.pending);
         Ok((self.facts.len() - before) as u64)
     }
-    async fn finish_layer(&mut self, _: &mut Work) -> Result<(), Self::Error> {
+    async fn finish_layer(
+        &mut self,
+        _: &[Rule<Self::Rule>],
+        _: &mut Work,
+    ) -> Result<(), Self::Error> {
         Ok(())
     }
     async fn finish(&mut self, _: &mut Work) -> Result<(), Self::Error> {
