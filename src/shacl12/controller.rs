@@ -107,7 +107,9 @@ impl Controller {
                     .await
                     .map_err(ExecutionError::Backend)?;
                 self.check(backend, work)?;
-                crate::cooperative::checkpoint(work.used()).await;
+                report.executions += 1;
+                crate::cooperative::checkpoint(report.executions).await;
+                self.check(backend, work)?;
             }
             let added = backend
                 .merge_phase(work)

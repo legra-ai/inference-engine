@@ -26,6 +26,8 @@ pub struct Report {
     pub iterations: u64,
     /// Executed same-order phases, including run-once phases.
     pub phases: u64,
+    /// Completed rule invocations across all phases.
+    pub executions: u64,
     /// Novel inferred triples before derived/temporary cleanup.
     pub inferred: u64,
     /// Total charged execution work, including backend reads and candidates.
