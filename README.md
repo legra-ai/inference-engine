@@ -36,6 +36,14 @@ general Datalog, then SHACL 1.2 reasoning. The other named profiles currently
 support compilation and inspection. Python and Node expose profile inspection;
 the executable storage-adapter APIs are Rust-only.
 
+The Rust-only [SHACL 1.2 scheduling controller](docs/shacl12.md) is a separate,
+partial execution slice. It orders shared checked schedule declarations, isolates
+same-order phases and runs layers to a fixed point through native backend ports.
+The original W3C same-order SPARQL fixture executes in a test adapter. A complete
+SHACL compiler, production backend integration and Python/Node execution APIs
+remain outstanding; this is not full SHACL 1.2 support. Existing SHACL-AF
+compatibility in consumers remains a distinct mode.
+
 ```rust
 let profile = inference_engine::compile_profile("rdfs-core")?;
 assert_eq!(profile.program.rules.len(), 14);
