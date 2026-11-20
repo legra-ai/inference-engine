@@ -3,3 +3,6 @@ tests/fixtures/rdf12-semantics/*.ttl -text
 
 # Preserve the published authored fixture and license bytes.
 tests/fixtures/rdf12-authored/* -text
+
+# Preserve SHACL 1.2 fixture, license and provenance bytes on Windows too.
+tests/fixtures/shacl12-inference/* -text
