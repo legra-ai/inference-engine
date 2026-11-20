@@ -5,10 +5,10 @@ mod support;
 use inference_engine::{
     entailment::EntailmentTerms,
     reasoning::{
-        DatatypeConflict, DatatypeConflictLimits, DatatypeConflictSink, Inference, LiteralReader,
-        LiteralTermAccess, LiteralTypingLimits, OccurrenceLimits, PropositionLimits,
-        Rdf12ContainerAccess, Rdf12TripleTermStore, Rdf12WitnessStore, Rdfs12ContextConfig,
-        Rdfs12SourceConfig, Rdfs12TargetConfig, ReasoningStore, RunLimits,
+        DatatypeConflictLimits, Inference, LiteralReader, LiteralTermAccess, LiteralTypingLimits,
+        OccurrenceLimits, PropositionLimits, Rdf12ContainerAccess, Rdf12SourceDiagnostic,
+        Rdf12SourceDiagnosticSink, Rdf12TripleTermStore, Rdf12WitnessStore, Rdfs12ContextConfig,
+        Rdfs12SourceConfig, Rdfs12TargetConfig, ReasoningStore, RunLimits, SourceLiteralLimits,
     },
 };
 use rdf_reasoning::{Rdf12ContainerProperty, Rdf12ExistentialAxiomId};
@@ -66,7 +66,10 @@ pub struct Fixture {
 }
 impl Fixture {
     pub fn new() -> Self {
-        let dictionary = Arc::new(Mutex::new(Dictionary::default()));
+        let mut initial = Dictionary::default();
+        initial.iri(1, "http://www.w3.org/1999/02/22-rdf-syntax-ns#type");
+        initial.iri(2, "http://www.w3.org/2000/01/rdf-schema#subClassOf");
+        let dictionary = Arc::new(Mutex::new(initial));
         let mut inner = support::Store::new([]);
         inner.cancel_signal = Some(dictionary.lock().unwrap().cancel.clone());
         Self {
@@ -262,11 +265,11 @@ impl Rdf12ContainerAccess for Access {
     }
 }
 #[derive(Default)]
-pub struct Diagnostics(pub Vec<DatatypeConflict<u64>>, pub bool);
-impl DatatypeConflictSink for Diagnostics {
+pub struct Diagnostics(pub Vec<Rdf12SourceDiagnostic<u64>>, pub bool);
+impl Rdf12SourceDiagnosticSink for Diagnostics {
     type Term = u64;
     type Error = io::Error;
-    async fn record(&mut self, value: DatatypeConflict<u64>) -> io::Result<()> {
+    async fn record(&mut self, value: Rdf12SourceDiagnostic<u64>) -> io::Result<()> {
         if self.1 {
             return Err(io::Error::other("diagnostic sink failed"));
         }
@@ -283,6 +286,7 @@ pub fn config() -> Rdfs12SourceConfig {
         rounds: NonZeroU32::new(16).unwrap(),
         structural: RunLimits::new(NonZeroU32::new(32).unwrap(), n(3000), n(1_000_000)),
         traversal: OccurrenceLimits::new(NonZeroU32::new(8).unwrap(), n(30_000), n(100_000)),
+        inspection: SourceLiteralLimits::new(n(10_000), n(100), 1_000_000),
         literals: LiteralTypingLimits::new(n(10_000), n(3000), 1_000_000),
         propositions: PropositionLimits::new(n(3000), n(10_000)),
         conflicts: DatatypeConflictLimits::new(n(100), n(100_000)),

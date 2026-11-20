@@ -193,3 +193,14 @@ async fn exact_byte_limit_can_prove_eof_but_over_limit_and_late_failures_abort()
         ));
     }
 }
+
+#[tokio::test]
+async fn lexical_witness_requires_complete_successful_payload_inspection() {
+    let mut reader = Reader::new(Literal::string(""), b"\0rest");
+    reader.chunk = 1;
+    reader.fail_at = Some(1);
+    assert!(matches!(
+        validator(10).validate(&mut reader).await,
+        Err(LiteralError::Storage(_))
+    ));
+}

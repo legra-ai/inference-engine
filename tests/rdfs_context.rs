@@ -4,7 +4,7 @@ mod source_support;
 use inference_engine::entailment::{EntailmentLimits, SimpleEntailment};
 use inference_engine::reasoning::{
     Evidence, LiteralError, LiteralRole, LiteralTypingError, Rdfs12Context, Rdfs12ContextConfig,
-    Rdfs12ContextError, Rdfs12ContextOutcome, Rdfs12SourceError, ReasoningStore, TripleSource,
+    Rdfs12ContextError, Rdfs12ContextOutcome, ReasoningStore, TripleSource,
 };
 use iri_rfc3987::Iri;
 use rdf_reasoning::Rdf12Datatype;
@@ -229,7 +229,7 @@ async fn source_errors_and_target_metadata_or_budget_failures_do_not_prepare_con
                 &mut Diagnostics::default()
             )
             .await,
-        Err(Rdfs12ContextError::Source(Rdfs12SourceError::Literals(_)))
+        Ok(Rdfs12ContextOutcome::SourceConflicting(report)) if report.diagnostics == 1
     ));
     for corrupt_identity in [false, true] {
         let mut f = Fixture::new();

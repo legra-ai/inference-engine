@@ -38,6 +38,27 @@ pub struct LiteralReport {
     pub bytes: u64,
 }
 
+/// One shared lexical violation found in a fully inspected payload.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LexicalViolation {
+    /// Global start of the fragment containing the first violation.
+    pub fragment_offset: u64,
+    /// Shared invalid character and fragment-relative byte offset.
+    pub error: Rdf12LexicalError,
+}
+
+/// Complete payload inspection, including a possible semantic lexical violation.
+/// Transport, UTF-8, metadata, cancellation and budget failures are errors instead.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LiteralInspection {
+    /// Exact datatype recognition and byte count after successful EOF.
+    pub report: LiteralReport,
+    /// First recognized lexical violation; unknown datatypes remain opaque.
+    pub violation: Option<LexicalViolation>,
+}
+
 /// Bounded lexical inspection under the three mandatory RDF 1.2 datatypes.
 ///
 /// Uses shared structural metadata checks and `rdf-reasoning` lexical semantics.
@@ -69,6 +90,28 @@ impl Rdf12LiteralValidator {
         &self,
         reader: &mut R,
     ) -> Result<LiteralReport, LiteralError<R::Error>> {
+        let inspection = self.inspect(reader).await?;
+        if let Some(violation) = inspection.violation {
+            return Err(LiteralError::Lexical {
+                fragment_offset: violation.fragment_offset,
+                error: violation.error,
+            });
+        }
+        Ok(inspection.report)
+    }
+
+    /// Inspect the entire payload, retaining only its first shared lexical violation.
+    ///
+    /// A semantic diagnostic is returned only after successful UTF-8 inspection
+    /// through EOF. Later transport/cancellation/resource errors invalidate it.
+    /// Scratch stays fixed at 4099 bytes plus one violation, even for huge values.
+    ///
+    /// # Errors
+    /// Invalid metadata/UTF-8, storage, cancellation or byte/reader limits abort.
+    pub async fn inspect<R: LiteralReader>(
+        &self,
+        reader: &mut R,
+    ) -> Result<LiteralInspection, LiteralError<R::Error>> {
         Self::check_cancelled(reader)?;
         let datatype = {
             let metadata = reader.metadata();
@@ -83,6 +126,7 @@ impl Rdf12LiteralValidator {
         let mut bytes = 0_u64;
         let mut offset = 0_u64;
         let mut read_steps = 0_u64;
+        let mut violation = None;
         loop {
             Self::check_cancelled(reader)?;
             let remaining = self.maximum - bytes;
@@ -107,7 +151,10 @@ impl Rdf12LiteralValidator {
                 .ok_or(LiteralError::LengthOverflow)?;
             if count == 0 {
                 return if pending == 0 {
-                    Ok(LiteralReport { datatype, bytes })
+                    Ok(LiteralInspection {
+                        report: LiteralReport { datatype, bytes },
+                        violation,
+                    })
                 } else {
                     Err(LiteralError::Utf8 {
                         byte_offset: offset,
@@ -127,13 +174,14 @@ impl Rdf12LiteralValidator {
             };
             let fragment = std::str::from_utf8(&buffer[..valid])
                 .expect("UTF-8 decoder's valid prefix must be UTF-8");
-            if let Some(datatype) = datatype {
-                datatype
-                    .validate_lexical(fragment)
-                    .map_err(|error| LiteralError::Lexical {
-                        fragment_offset: offset,
-                        error,
-                    })?;
+            if violation.is_none()
+                && let Some(datatype) = datatype
+                && let Err(error) = datatype.validate_lexical(fragment)
+            {
+                violation = Some(LexicalViolation {
+                    fragment_offset: offset,
+                    error,
+                });
             }
             offset = offset
                 .checked_add(valid as u64)

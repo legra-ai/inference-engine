@@ -3,10 +3,11 @@ use super::{
     Rdfs12SourceReport,
 };
 use crate::reasoning::{
-    DatatypeConflictSink, ExecutionProfile, LiteralRole, LiteralTermAccess, Rdf12AxiomSeeder,
+    ExecutionProfile, LiteralRole, LiteralTermAccess, Rdf12AxiomSeeder,
     Rdf12DatatypeConflictChecker, Rdf12LiteralOccurrences, Rdf12LiteralTyper,
-    Rdf12OccurrenceCursor, Rdf12OccurrenceTyper, Rdf12PropositionConstructor, Rdf12TripleTermStore,
-    Rdf12WitnessStore, Reasoner, ReasoningError, ReasoningStore, TripleCursor, TripleSource,
+    Rdf12OccurrenceCursor, Rdf12OccurrenceTyper, Rdf12PropositionConstructor,
+    Rdf12SourceDiagnosticSink, Rdf12TripleTermStore, Rdf12WitnessStore, Reasoner, ReasoningError,
+    ReasoningStore, TripleCursor, TripleSource,
 };
 use rdf_reasoning::{Rdf12AxiomId, Rdf12ContainerProperty, Rdf12ExistentialAxiomId};
 use std::marker::PhantomData;
@@ -19,7 +20,7 @@ use std::marker::PhantomData;
 /// arbitrary resource/property combinations are not generated. Target-relative
 /// candidate completeness, goal scheduling and entailment decisions stay separate.
 pub struct Rdfs12Source {
-    config: Rdfs12SourceConfig,
+    pub(super) config: Rdfs12SourceConfig,
 }
 impl Rdfs12Source {
     /// Configure every phase explicitly; the serialized config has no defaults.
@@ -29,7 +30,10 @@ impl Rdfs12Source {
 
     /// Prepare source axioms, inspected literals, occurrences, existing terms and core.
     ///
-    /// Repeat bounded source rounds until no phase adds facts. Classify canonical
+    /// First inspect every original source literal through successful EOF. Retain
+    /// recognized lexical violations separately and return `Conflicting` without
+    /// seeding or inference. Read/metadata/UTF-8/resource failures remain errors.
+    /// Otherwise repeat bounded source rounds until no phase adds facts. Classify canonical
     /// container IRIs from actual direct/nested source appearances, not literal
     /// metadata. Seed distinct nonempty-class blanks through the caller's scope.
     /// Only then scan supported default-map conflicts into the separate sink.
@@ -39,7 +43,7 @@ impl Rdfs12Source {
     /// contract before atomic promotion; `Conflicting` forbids promotion.
     ///
     /// # Errors
-    /// Any compile/read/write/metadata/lexical/cancellation or resource failure
+    /// Any compile/read/write/metadata/UTF-8/cancellation or resource failure
     /// invalidates the attempt. Discard scratch and retain diagnostics with scope.
     pub async fn run<S, A, D>(
         &self,
@@ -50,8 +54,12 @@ impl Rdfs12Source {
     where
         S: Rdf12WitnessStore + Rdf12TripleTermStore,
         A: LiteralTermAccess<Term = S::Term, Error = S::Error> + Rdf12ContainerAccess,
-        D: DatatypeConflictSink<Term = S::Term, Error = S::Error>,
+        D: Rdf12SourceDiagnosticSink<Term = S::Term, Error = S::Error>,
     {
+        let mut report = self.inspect_source(store, access, sink).await?;
+        if report.diagnostics != 0 {
+            return Ok(Rdfs12SourceOutcome::Conflicting(report));
+        }
         let mut seeds = Rdf12AxiomSeeder::new(self.config.axioms);
         for family in [
             Rdf12AxiomId::Rdf,
@@ -67,11 +75,8 @@ impl Rdfs12Source {
             Rdf12ContainerProperty::try_new("http://www.w3.org/1999/02/22-rdf-syntax-ns#_1")
                 .expect("canonical standard container IRI");
         seeds.seed_container(store, &first).await?;
-        let mut report = Rdfs12SourceReport {
-            seeded: seeds.inferred(),
-            inferred: seeds.inferred(),
-            ..Rdfs12SourceReport::default()
-        };
+        report.seeded = seeds.inferred();
+        report.inferred = seeds.inferred();
         loop {
             if report.rounds == self.config.rounds.get() {
                 return Err(Rdfs12SourceError::Rounds);
@@ -111,7 +116,11 @@ impl Rdfs12Source {
             }
         }
         let conflicts = Rdf12DatatypeConflictChecker::new(self.config.conflicts)
-            .run(store, LiteralRole::Source, sink)
+            .run(
+                store,
+                LiteralRole::Source,
+                &mut super::diagnostic::ConflictSink(sink),
+            )
             .await
             .map_err(Rdfs12SourceError::Conflicts)?;
         report.diagnostics = conflicts.diagnostics;
