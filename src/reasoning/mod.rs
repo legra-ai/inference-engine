@@ -25,7 +25,10 @@ pub use context::{
     Rdfs12TargetConfig, Rdfs12TargetReport,
 };
 pub use engine::Reasoner;
-pub use literal::{LiteralError, LiteralReader, LiteralReport, Rdf12LiteralValidator};
+pub use literal::{
+    LexicalViolation, LiteralError, LiteralInspection, LiteralReader, LiteralReport,
+    Rdf12LiteralValidator,
+};
 pub use literal_typing::{
     LiteralCursorError, LiteralOccurrence, LiteralOccurrenceCursor, LiteralOccurrenceRead,
     LiteralRole, LiteralTermAccess, LiteralTypingError, LiteralTypingLimits, LiteralTypingReport,
@@ -39,8 +42,9 @@ pub use occurrence_typing::{OccurrenceTypingError, OccurrenceTypingReport, Rdf12
 pub use proposition::{PropositionLimits, PropositionReport, Rdf12PropositionConstructor};
 pub use seeding::Rdf12AxiomSeeder;
 pub use source::{
-    Rdf12ContainerAccess, Rdfs12Source, Rdfs12SourceConfig, Rdfs12SourceError, Rdfs12SourceOutcome,
-    Rdfs12SourceReport,
+    Rdf12ContainerAccess, Rdf12SourceDiagnostic, Rdf12SourceDiagnosticSink, Rdfs12Source,
+    Rdfs12SourceConfig, Rdfs12SourceError, Rdfs12SourceOutcome, Rdfs12SourceReport,
+    SourceLiteralLimits,
 };
 pub use types::{
     AxiomFamily, Evidence, ExecutionProfile, Inference, Limit, Premises, ProfileError,

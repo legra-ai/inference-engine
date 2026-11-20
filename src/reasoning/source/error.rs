@@ -30,6 +30,8 @@ pub enum Rdfs12SourceError<T, E> {
     PropositionIdentity,
     /// Complete source-only diagnostic scan failed.
     Conflicts(DatatypeConflictError<E>),
+    /// Source literal semantic-diagnostic budget was exhausted.
+    DiagnosticLimit,
     /// Outer round budget ended before proving the selected source fixpoint.
     Rounds,
     /// Counters cannot represent total bounded work; no wrapped report was returned.
@@ -58,6 +60,7 @@ impl<T, E: fmt::Display> fmt::Display for Rdfs12SourceError<T, E> {
                 f.write_str("source triple-term construction does not match selected term")
             }
             Self::Conflicts(error) => error.fmt(f),
+            Self::DiagnosticLimit => f.write_str("source literal diagnostic limit exceeded"),
             Self::Rounds => f.write_str("source preparation round limit exceeded"),
             Self::CounterOverflow => f.write_str("source preparation counter capacity exceeded"),
         }

@@ -1,8 +1,8 @@
 use super::{Rdfs12ContextConfig, Rdfs12ContextError, Rdfs12ContextOutcome, Rdfs12TargetReport};
 use crate::reasoning::{
-    DatatypeConflictSink, ExecutionProfile, LiteralRole, LiteralTermAccess, Rdf12AxiomSeeder,
-    Rdf12ContainerAccess, Rdf12LiteralOccurrences, Rdf12LiteralTyper, Rdf12OccurrenceCursor,
-    Rdf12OccurrenceTyper, Rdf12TripleTermStore, Rdf12WitnessStore, Rdfs12Source,
+    ExecutionProfile, LiteralRole, LiteralTermAccess, Rdf12AxiomSeeder, Rdf12ContainerAccess,
+    Rdf12LiteralOccurrences, Rdf12LiteralTyper, Rdf12OccurrenceCursor, Rdf12OccurrenceTyper,
+    Rdf12SourceDiagnosticSink, Rdf12TripleTermStore, Rdf12WitnessStore, Rdfs12Source,
     Rdfs12SourceOutcome, Reasoner, ReasoningError, ReasoningStore, TripleSource,
 };
 
@@ -46,7 +46,7 @@ impl Rdfs12Context {
         S: Rdf12WitnessStore + Rdf12TripleTermStore,
         A: LiteralTermAccess<Term = S::Term, Error = S::Error> + Rdf12ContainerAccess,
         T: TripleSource<Term = S::Term, Error = S::Error>,
-        D: DatatypeConflictSink<Term = S::Term, Error = S::Error>,
+        D: Rdf12SourceDiagnosticSink<Term = S::Term, Error = S::Error>,
     {
         let source = match Rdfs12Source::new(self.config.source)
             .run(store, access, sink)

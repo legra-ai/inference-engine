@@ -4,8 +4,8 @@ use inference_engine::entailment::EntailmentTerms;
 use inference_engine::reasoning::{
     DatatypeConflictSink, LiteralOccurrenceCursor, LiteralRole, Rdf12AxiomSeeder,
     Rdf12DatatypeConflictChecker, Rdf12LiteralTyper, Rdf12OccurrenceCursor, Rdf12OccurrenceTyper,
-    Rdf12PropositionConstructor, Rdf12TripleTermStore, Rdf12WitnessStore, Reasoner, ReasoningStore,
-    TripleCursor,
+    Rdf12PropositionConstructor, Rdf12SourceDiagnosticSink, Rdf12TripleTermStore,
+    Rdf12WitnessStore, Reasoner, ReasoningStore, TripleCursor,
 };
 use rdf_reasoning::Rdf12ExistentialAxiomId;
 use std::future::Future;
@@ -102,7 +102,7 @@ fn source_preparation_future_is_send<S, A, D>(
     S: Rdf12WitnessStore + Rdf12TripleTermStore,
     A: inference_engine::reasoning::LiteralTermAccess<Term = S::Term, Error = S::Error>
         + inference_engine::reasoning::Rdf12ContainerAccess,
-    D: DatatypeConflictSink<Term = S::Term, Error = S::Error>,
+    D: Rdf12SourceDiagnosticSink<Term = S::Term, Error = S::Error>,
 {
     require_send(source.run(store, access, sink));
 }
@@ -125,7 +125,7 @@ fn context_future_is_send<S, A, T, D>(
     A: inference_engine::reasoning::LiteralTermAccess<Term = S::Term, Error = S::Error>
         + inference_engine::reasoning::Rdf12ContainerAccess,
     T: inference_engine::reasoning::TripleSource<Term = S::Term, Error = S::Error>,
-    D: DatatypeConflictSink<Term = S::Term, Error = S::Error>,
+    D: Rdf12SourceDiagnosticSink<Term = S::Term, Error = S::Error>,
 {
     require_send(context.run(store, access, target, sink));
 }

@@ -96,16 +96,10 @@ async fn nonempty_datatype_witnesses_expose_source_schema_conflict_without_liter
     assert!(!diagnostics.0.is_empty());
 }
 #[tokio::test]
-async fn lexical_budget_read_and_cancellation_failures_never_prepare_partial_source() {
-    for failure in 0..4 {
+async fn budget_read_and_cancellation_failures_never_prepare_partial_source() {
+    for failure in 1..4 {
         let mut fixture = Fixture::new();
         let mut limits = config();
-        if failure == 0 {
-            let literal = fixture.literal("bad\0string");
-            let a = fixture.iri("urn:example:a");
-            let p = fixture.iri("urn:example:p");
-            fixture.store.inner.asserted.insert([a, p, literal]);
-        }
         if failure == 1 {
             limits.axioms = n(1);
         }
@@ -259,4 +253,22 @@ async fn a_noncanonical_existing_quote_cannot_report_successful_source_preparati
             .is_err(),
         "existing-term construction must round-trip to the selected exact key"
     );
+}
+
+#[tokio::test]
+async fn ill_typed_source_literal_is_a_retained_semantic_conflict_before_any_inference() {
+    let mut fixture = Fixture::new();
+    let literal = fixture.literal("bad\0string");
+    let a = fixture.iri("urn:example:a");
+    let p = fixture.iri("urn:example:p");
+    fixture.store.inner.asserted.insert([a, p, literal]);
+    let mut diagnostics = Diagnostics::default();
+    let result = Rdfs12Source::new(config())
+        .run(&mut fixture.store, &fixture.access, &mut diagnostics)
+        .await
+        .unwrap();
+    assert!(matches!(result, Rdfs12SourceOutcome::Conflicting(report)
+        if report.diagnostics == 1 && report.seeded == 0 && report.inferred == 0));
+    assert_eq!(diagnostics.0.len(), 1);
+    assert!(fixture.store.inner.inferred.is_empty());
 }

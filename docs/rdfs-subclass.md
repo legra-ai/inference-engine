@@ -93,6 +93,14 @@ validation never canonicalizes its lexical form, language spelling or direction.
 Backend read failures, malformed UTF-8, unsupported metadata, cancellation and
 resource exhaustion stay distinct from recognized lexical violations.
 
+`inspect` completes the entire byte stream and returns `LiteralInspection` with
+an optional first `LexicalViolation`. Metadata, UTF-8, read, cancellation and
+budget failures remain errors, including failures after a lexical violation.
+`validate` uses the same complete inspection and rejects that violation as
+`LiteralError::Lexical`. Neither retains the whole payload. The
+[source controller](rdfs-source.md) uses completed inspection to distinguish
+source semantic conflicts from execution failures.
+
 The caller owns total attempt budgets across literals. Literal inspection is a
 prerequisite for datatype inference and consistency checking, not their complete
 implementation.
