@@ -1,0 +1,4 @@
+Original unmodified W3C data-shapes SHACL 1.2 test.
+Copyright 2026 World Wide Web Consortium and contributors.
+See LICENSE.md and provenance.json for license, source, revision and hash.
+This is draft test evidence, not W3C certification.

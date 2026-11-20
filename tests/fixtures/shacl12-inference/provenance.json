@@ -1,0 +1,7 @@
+{
+  "repository": "https://github.com/w3c/data-shapes",
+  "revision": "0ed3f9b4273c2debba0125a7ed5c9dc3cd4b741c",
+  "source": "shacl12-test-suite/tests/inference-rules/same-order.ttl",
+  "sha256": "a17904e4d30a7f505c06d286ce4b896c53c98a2106c553d0073701d994c6b5bb",
+  "draft": "https://www.w3.org/TR/2026/WD-shacl12-inference-rules-20261110/"
+}
