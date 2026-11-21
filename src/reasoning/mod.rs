@@ -14,6 +14,7 @@ mod plan;
 mod proposition;
 mod seeding;
 mod source;
+mod target;
 mod types;
 
 pub use conflict::{
@@ -41,6 +42,10 @@ pub use seeding::Rdf12AxiomSeeder;
 pub use source::{
     Rdf12ContainerAccess, Rdfs12Source, Rdfs12SourceConfig, Rdfs12SourceError, Rdfs12SourceOutcome,
     Rdfs12SourceReport,
+};
+pub use target::{
+    Rdf12TargetConstructor, TargetConstructionError, TargetConstructionLimits,
+    TargetConstructionReport,
 };
 pub use types::{
     AxiomFamily, Evidence, ExecutionProfile, Inference, Limit, Premises, ProfileError,

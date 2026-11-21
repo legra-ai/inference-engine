@@ -4,7 +4,10 @@ mod source_support;
 mod syntax;
 use inference_engine::{
     entailment::{EntailmentLimits, SimpleEntailment},
-    reasoning::{Rdfs12Context, Rdfs12ContextOutcome, ReasoningStore},
+    reasoning::{
+        ExecutionProfile, PropositionLimits, Rdf12TargetConstructor, Rdfs12Context,
+        Rdfs12ContextOutcome, Reasoner, ReasoningStore, TargetConstructionLimits,
+    },
 };
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -57,12 +60,14 @@ enum Stage {
     Source,
     Context,
     Matching,
+    Construction,
+    Core,
 }
 #[derive(Serialize)]
 #[serde(rename_all = "kebab-case")]
 enum Missing {
-    TargetRelevantConstruction,
-    CompleteNegativeDecision,
+    CompleteEntailmentDecision,
+    BoundedPositiveSearch,
     SourceConflictPolicy,
 }
 #[derive(Serialize)]
@@ -210,41 +215,86 @@ async fn execute(case: &Case) -> Status {
         }
         Ok(Rdfs12ContextOutcome::Prepared { .. }) => {}
     }
-    let source = match parser.fixture.store.snapshot().await {
-        Ok(view) => view,
-        Err(error) => return failure(Stage::Source, error),
-    };
-    let matcher = SimpleEntailment::new(EntailmentLimits::new(
+    let matching = EntailmentLimits::new(
         NonZeroU32::new(128).unwrap(),
         NonZeroU32::new(128).unwrap(),
         NonZeroU32::new(256).unwrap(),
         NonZeroU64::new(2_000_000).unwrap(),
+    );
+    let matcher = SimpleEntailment::new(matching);
+    let constructor = Rdf12TargetConstructor::new(TargetConstructionLimits::new(
+        matching,
+        PropositionLimits::new(
+            NonZeroU64::new(3000).unwrap(),
+            NonZeroU64::new(2_000_000).unwrap(),
+        ),
+        NonZeroU32::new(256).unwrap(),
+        NonZeroU64::new(2_000_000).unwrap(),
     ));
-    match matcher
-        .check(&source, &target, &parser.fixture.access)
+    // bounded: this harness exercises the two-pass positive witness schedule,
+    // including the published chain. It does not run constructor feedback to a
+    // fixpoint: unmatched targets may otherwise grow terms without a finite bound.
+    // Expected verdicts never select execution phases or candidate substitutions.
+    for round in 0..=2 {
+        let source = match parser.fixture.store.snapshot().await {
+            Ok(view) => view,
+            Err(error) => return failure(Stage::Source, error),
+        };
+        match matcher
+            .check(&source, &target, &parser.fixture.access)
+            .await
+        {
+            Err(error) => {
+                return Status::Error {
+                    stage: Stage::Matching,
+                    message: error.to_string(),
+                };
+            }
+            Ok(result) if result.entailed && case.expected => return Status::Pass,
+            Ok(result) if result.entailed => {
+                return Status::Fail {
+                    expected: case.expected,
+                    observed: true,
+                };
+            }
+            Ok(_) => {}
+        }
+        if round == 2 {
+            return Status::Unsupported {
+                missing: Missing::BoundedPositiveSearch,
+            };
+        }
+        let report = match constructor
+            .run(&mut parser.fixture.store, &parser.fixture.access, &target)
+            .await
+        {
+            Ok(report) => report,
+            Err(error) => {
+                return Status::Error {
+                    stage: Stage::Construction,
+                    message: error.to_string(),
+                };
+            }
+        };
+        if report.propositions.inferred == 0 {
+            return Status::Unsupported {
+                missing: Missing::CompleteEntailmentDecision,
+            };
+        }
+        if let Err(error) = Reasoner::new(
+            ExecutionProfile::RdfsCore,
+            source_support::context_config().target.structural,
+        )
+        .run(&mut parser.fixture.store)
         .await
-    {
-        Err(error) => Status::Error {
-            stage: Stage::Matching,
-            message: error.to_string(),
-        },
-        Ok(result) if result.entailed && case.expected => Status::Pass,
-        Ok(result) if result.entailed => Status::Fail {
-            expected: case.expected,
-            observed: true,
-        },
-        Ok(_) => Status::Unsupported {
-            missing: if case.requires.contains(&Requirement::TargetContext)
-                && case
-                    .requires
-                    .contains(&Requirement::PropositionConstruction)
-            {
-                Missing::TargetRelevantConstruction
-            } else {
-                Missing::CompleteNegativeDecision
-            },
-        },
+        {
+            return Status::Error {
+                stage: Stage::Core,
+                message: error.to_string(),
+            };
+        }
     }
+    unreachable!("bounded positive search always returns a verdict or an explicit limitation")
 }
 fn failure(stage: Stage, error: io::Error) -> Status {
     Status::Error {
