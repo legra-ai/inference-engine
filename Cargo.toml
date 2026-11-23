@@ -33,7 +33,7 @@ rdf-structural-model = "=0.4.0"
 serde = { version = "1", features = ["derive"] }
 
 [build-dependencies]
-rhusky = "=2.0.10"
+rhusky = "=2.0.11"
 toml = "1.2.1"
 
 [dev-dependencies]
