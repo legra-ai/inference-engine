@@ -125,7 +125,7 @@ jobs:
       - run: cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
       - run: cargo test --locked --doc
       - run: cargo doc --locked --no-deps
-      - uses: legra-ai/github-actions/.github/actions/test-cargo-package@5e41b92e70d9398dd2bda441f5017ffe35824b5e
+      - uses: legra-ai/github-actions/.github/actions/test-cargo-package@fbe4d05b41aaff86a7a38bd0228943d8cfead4e1
 
   sdist:
     needs: prepare
