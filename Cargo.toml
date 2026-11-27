@@ -34,7 +34,7 @@ serde = { version = "1", features = ["derive"] }
 shacl-structural-model = "=6.4.7"
 
 [build-dependencies]
-rhusky = "=2.0.10"
+rhusky = "=2.0.12"
 toml = "1.2.1"
 
 [dev-dependencies]

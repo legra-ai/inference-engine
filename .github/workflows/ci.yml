@@ -125,7 +125,7 @@ jobs:
       - run: cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
       - run: cargo test --locked --doc
       - run: cargo doc --locked --no-deps
-      - uses: legra-ai/github-actions/.github/actions/test-cargo-package@65a22bfa9534499fa5a9dcb44c519b5ad8c6cf9d
+      - uses: legra-ai/github-actions/.github/actions/test-cargo-package@49efdb43fdabe6f5be5ac9bac23e126e4f5aca97
 
   sdist:
     needs: prepare
@@ -138,7 +138,7 @@ jobs:
         with:
           python-version: '3.13'
       - uses: actions-rust-lang/setup-rust-toolchain@a188e68d0fd2bd36ad51dccb2b07ba6e75105f30
-      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d
         with:
           version: '0.13.7'
       - run: uv build --sdist --out-dir dist
@@ -178,7 +178,7 @@ jobs:
         with:
           node-version: '24'
       - uses: actions-rust-lang/setup-rust-toolchain@a188e68d0fd2bd36ad51dccb2b07ba6e75105f30
-      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d
         with:
           version: '0.13.7'
       - run: cargo test --locked --workspace
@@ -292,7 +292,7 @@ jobs:
           node-version: '24'
           registry-url: https://registry.npmjs.org
       - run: python3 scripts/release-version.py
-      - uses: legra-ai/github-actions/.github/actions/tag-tested-release@29002202e2829a98b1208ba3640c0e733ef15602
+      - uses: legra-ai/github-actions/.github/actions/tag-tested-release@49efdb43fdabe6f5be5ac9bac23e126e4f5aca97
         with:
           version: ${{ needs.prepare.outputs.version }}
           revision: ${{ needs.prepare.outputs.revision }}
@@ -313,7 +313,7 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.writer.outputs.token }}
         run: python3 scripts/release-packages.py stage
-      - uses: legra-ai/github-actions/.github/actions/publish-tested-crate@b3cebd0e56098fb20bbf8bc2d5770b82d9020ddd
+      - uses: legra-ai/github-actions/.github/actions/publish-tested-crate@49efdb43fdabe6f5be5ac9bac23e126e4f5aca97
         with:
           crate: inference-engine
           version: ${{ needs.prepare.outputs.version }}
@@ -327,7 +327,7 @@ jobs:
         env:
           NPM_ARCHIVE: ${{ steps.npm.outputs.npm_archive }}
         run: npm publish "$GITHUB_WORKSPACE/$NPM_ARCHIVE" --tag alpha --access public --provenance --ignore-scripts
-      - uses: legra-ai/github-actions/.github/actions/verify-registry-publication@65a22bfa9534499fa5a9dcb44c519b5ad8c6cf9d
+      - uses: legra-ai/github-actions/.github/actions/verify-registry-publication@49efdb43fdabe6f5be5ac9bac23e126e4f5aca97
         with:
           registry: npm
           package: inference-engine
@@ -340,7 +340,7 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: pending-packages/
-      - uses: legra-ai/github-actions/.github/actions/verify-registry-publication@65a22bfa9534499fa5a9dcb44c519b5ad8c6cf9d
+      - uses: legra-ai/github-actions/.github/actions/verify-registry-publication@49efdb43fdabe6f5be5ac9bac23e126e4f5aca97
         with:
           registry: pypi
           package: inference-engine
