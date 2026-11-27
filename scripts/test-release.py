@@ -19,6 +19,14 @@ def load(name):
     return module
 
 class ReleaseTests(unittest.TestCase):
+    def test_cargo_archive_keeps_both_rdfs_and_shacl_contracts(self):
+        listing = subprocess.check_output(
+            ['cargo', 'package', '--list', '--locked'], cwd=ROOT, text=True)
+        included = set(listing.splitlines())
+        required = {'docs/rdfs-targets.md', 'docs/shacl12.md',
+                    'src/reasoning/target/grounding.rs', 'src/shacl12/controller.rs'}
+        self.assertFalse(required - included, required - included)
+
     def test_python_source_archive_cannot_omit_a_library_module(self):
         packages = load('check-package')
         omitted = 'src/reasoning/target/grounding.rs'
