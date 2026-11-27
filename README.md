@@ -20,7 +20,7 @@ asynchronous database scans, indexed probes and scratch storage. Separate bounde
 APIs seed RDF 1.2 ground axioms and scoped blank witnesses, validate streamed literal payloads, execute shared
 default-map literal and recursive occurrence clauses, construct finite proposition
 terms, report
-source-only default datatype conflicts and check simple source-to-target entailment
+source-only ill-typed literal and default datatype conflicts and check simple source-to-target entailment
 with nested blank-node substitution. A [source-preparation controller](docs/rdfs-source.md)
 composes these source phases before target augmentation. See also
 [the individual adapter and execution contracts](docs/rdfs-subclass.md).

@@ -1,10 +1,13 @@
 //! Source-only default-map preparation before target-relative entailment context.
+mod diagnostic;
 mod engine;
 mod error;
+mod literals;
 use super::{
     DatatypeConflictLimits, LiteralTypingLimits, OccurrenceLimits, PropositionLimits, RunLimits,
 };
 use crate::entailment::EntailmentTerms;
+pub use diagnostic::{Rdf12SourceDiagnostic, Rdf12SourceDiagnosticSink, SourceLiteralLimits};
 pub use engine::Rdfs12Source;
 pub use error::Rdfs12SourceError;
 use rdf_reasoning::Rdf12ContainerProperty;
@@ -35,7 +38,7 @@ pub trait Rdf12ContainerAccess: EntailmentTerms {
 
 /// Explicit serialized resource configuration; no implicit budget defaults.
 ///
-/// Phase budgets apply per source round, except cumulative axiom seeding.
+/// Phase budgets apply per source round, except preflight and cumulative axiom seeding.
 /// The round cap therefore also bounds total phase work. Backends separately
 /// enforce attempt-wide scratch, dictionary, I/O and metadata budgets.
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
@@ -49,6 +52,8 @@ pub struct Rdfs12SourceConfig {
     pub structural: RunLimits,
     /// Depth, appearances and work caps for each immutable traversal.
     pub traversal: OccurrenceLimits,
+    /// Source-only literal preflight caps, before seeding or inference.
+    pub inspection: SourceLiteralLimits,
     /// Literal occurrence/output/lexical-byte caps per round.
     pub literals: LiteralTypingLimits,
     /// Work/output caps for each existing-term candidate check.
@@ -69,11 +74,11 @@ pub struct Rdfs12SourceReport {
     pub seeded: u64,
     /// Total novel facts across seeding and all executed phases.
     pub inferred: u64,
-    /// Literal appearances inspected, including repeated derived occurrences.
+    /// Literal appearances inspected, including preflight and repeated derived occurrences.
     pub literals: u64,
     /// Aggregate streamed lexical bytes, including repeated inspections.
     pub lexical_bytes: u64,
-    /// Supported default-map conflicts retained separately from RDF output.
+    /// Supported source lexical and default-map conflicts retained outside RDF output.
     pub diagnostics: u64,
 }
 impl Rdfs12SourceReport {

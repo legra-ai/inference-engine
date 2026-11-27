@@ -193,3 +193,47 @@ async fn exact_byte_limit_can_prove_eof_but_over_limit_and_late_failures_abort()
         ));
     }
 }
+
+#[tokio::test]
+async fn lexical_witness_requires_complete_successful_payload_inspection() {
+    let mut reader = Reader::new(Literal::string(""), b"\0rest");
+    reader.chunk = 1;
+    reader.fail_at = Some(1);
+    assert!(matches!(
+        validator(10).validate(&mut reader).await,
+        Err(LiteralError::Storage(_))
+    ));
+}
+
+#[tokio::test]
+async fn completed_inspection_keeps_first_witness_but_late_failures_remain_errors() {
+    let mut reader = Reader::new(Literal::string(""), b"a\0b\0");
+    reader.chunk = 1;
+    let inspection = validator(4).inspect(&mut reader).await.unwrap();
+    assert_eq!(inspection.report.bytes, 4);
+    let violation = inspection.violation.unwrap();
+    assert_eq!(violation.fragment_offset + violation.error.byte_offset(), 1);
+    assert_eq!(reader.reads, 5); // Includes successful EOF.
+    for failure in 0..4 {
+        let mut reader = Reader::new(
+            Literal::string(""),
+            if failure == 0 { b"\0\xff" } else { b"\0a" },
+        );
+        reader.chunk = 1;
+        if failure == 1 {
+            reader.cancel_at = Some(1);
+        }
+        if failure == 2 {
+            reader.fail_at = Some(1);
+        }
+        let maximum = if failure == 3 { 1 } else { 10 };
+        let error = validator(maximum).inspect(&mut reader).await.unwrap_err();
+        assert!(matches!(
+            (failure, error),
+            (0, LiteralError::Utf8 { byte_offset: 1 })
+                | (1, LiteralError::Cancelled)
+                | (2, LiteralError::Storage(_))
+                | (3, LiteralError::ByteLimit)
+        ));
+    }
+}
