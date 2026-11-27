@@ -136,3 +136,17 @@ fn borrowed_context_error_retains_error_source(
 ) {
     let _ = std::error::Error::source(error);
 }
+
+#[allow(dead_code)]
+fn target_construction_future_is_send<S, A, T>(
+    constructor: &inference_engine::reasoning::Rdf12TargetConstructor,
+    store: &mut S,
+    access: &A,
+    target: &T,
+) where
+    S: Rdf12TripleTermStore,
+    A: EntailmentTerms<Term = S::Term, Error = S::Error>,
+    T: inference_engine::reasoning::TripleSource<Term = S::Term, Error = S::Error>,
+{
+    require_send(constructor.run(store, access, target));
+}

@@ -25,6 +25,15 @@ def check(path):
             raise ValueError('Source distribution omits Rust implementation')
         if not any(name.endswith('/build.rs') for name in names):
             raise ValueError('Source distribution omits required Cargo build script')
+        # Compare with the authoritative checkout that produced this distribution.
+        # A metadata-only Cargo probe cannot detect excluded Rust module files.
+        root = Path(__file__).resolve().parents[1]
+        prefix = next(name[:-len('src/lib.rs')] for name in names
+                      if name.endswith('/src/lib.rs') and len(name.split('/')) == 3)
+        for source in (root / 'src').rglob('*.rs'):
+            relative = source.relative_to(root).as_posix()
+            if prefix + relative not in names:
+                raise ValueError(f'Source distribution omits Rust source {relative}')
         with tempfile.TemporaryDirectory(prefix='inference-sdist-contract-') as directory:
             with tarfile.open(path) as archive:
                 archive.extractall(directory, filter='data')

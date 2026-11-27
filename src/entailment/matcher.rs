@@ -10,9 +10,9 @@ struct Frame<C> {
     cursor: C,
     checkpoint: usize,
 }
-struct State {
-    limits: EntailmentLimits,
-    steps: u64,
+pub(super) struct State {
+    pub(super) limits: EntailmentLimits,
+    pub(super) steps: u64,
 }
 
 impl SimpleEntailment {
@@ -129,7 +129,7 @@ impl State {
             Ok(())
         }
     }
-    async fn step<A: EntailmentTerms>(
+    pub(super) async fn step<A: EntailmentTerms>(
         &mut self,
         terms: &A,
     ) -> Result<(), EntailmentError<A::Error>> {
@@ -141,7 +141,7 @@ impl State {
         crate::cooperative::checkpoint(self.steps).await;
         self.cancel(terms)
     }
-    async fn probe<A: EntailmentTerms>(
+    pub(super) async fn probe<A: EntailmentTerms>(
         &mut self,
         pattern: &[A::Term; 3],
         bindings: &[(A::Term, A::Term)],
@@ -171,7 +171,7 @@ impl State {
         }
         Ok(probe)
     }
-    async fn bind<A: EntailmentTerms>(
+    pub(super) async fn bind<A: EntailmentTerms>(
         &mut self,
         pattern: &[A::Term; 3],
         tuple: &[A::Term; 3],
