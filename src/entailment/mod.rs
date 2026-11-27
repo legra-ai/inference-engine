@@ -6,7 +6,9 @@
 //! for the stronger entailment regimes. A simple match is not full RDFS support.
 
 mod matcher;
+mod partial;
 pub use matcher::SimpleEntailment;
+pub(crate) use partial::PartialMatches;
 
 use serde::{Deserialize, Serialize};
 use std::{

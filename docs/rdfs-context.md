@@ -35,8 +35,9 @@ validated construction. Atomic components are still traversed. Literal metadata
 and payload validation precedes resource typing.
 
 `Prepared { source, target }` reports completed selected phases. It is neither a
-full consistency certificate nor an entailment verdict. Adequately substituted
-target proposition candidates, construction interleaved with core consequences,
+full consistency certificate nor an entailment verdict. The
+[target-selected constructor](rdfs-targets.md) supplies a separate finite positive
+search phase for substituted proposition candidates. Selection adequacy,
 complete negative decisions and remaining conformance obligations stay separate.
 A failed simple match must not be interpreted as negative RDFS entailment.
 
@@ -85,5 +86,6 @@ metadata isolation, late errors, budgets, identity checks and serialized reports
 They also include a counterexample with a source making every resource a class
 and a target-only triple term whose predicate is not established as a property.
 That term must not generate its own reflexive subclass proof.
-The authored eighteen-case harness now has ten positive proofs and eight explicit
-unsupported decisions. These measured results do not claim full RDFS conformance.
+The authored eighteen-case harness now has twelve positive proofs and six explicit
+unsupported decisions under its fixed two-pass construction/core witness schedule.
+These measured results do not claim full RDFS conformance.
