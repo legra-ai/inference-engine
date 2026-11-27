@@ -7,6 +7,7 @@ use serde::Serialize;
 mod cooperative;
 pub mod entailment;
 pub mod reasoning;
+pub mod shacl12;
 
 /// An exact shared RDF profile, compiled into portable checked Datalog rules.
 ///

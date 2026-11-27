@@ -18,21 +18,23 @@ def load(name):
 
 class ReleaseTests(unittest.TestCase):
     def test_windows_checkout_preserves_pinned_w3c_fixture_bytes(self):
-        fixture = 'tests/fixtures/rdf12-semantics/manifest.ttl'
-        original = (ROOT / fixture).read_bytes()
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            subprocess.run(['git', 'init', '--quiet'], cwd=root, check=True)
-            attributes = ROOT / '.gitattributes'
-            if attributes.exists():
-                (root / '.gitattributes').write_bytes(attributes.read_bytes())
-            blob = subprocess.check_output(['git', 'hash-object', '-w', '--stdin'],
-                                           cwd=root, input=original).decode().strip()
-            checkout = subprocess.check_output([
-                'git', '-c', 'core.autocrlf=true', 'cat-file', '--filters',
-                '--path=' + fixture, blob], cwd=root)
-            self.assertEqual(hashlib.sha256(checkout).digest(),
-                             hashlib.sha256(original).digest())
+        for fixture in ('tests/fixtures/rdf12-semantics/manifest.ttl',
+                        'tests/fixtures/shacl12-inference/same-order.ttl'):
+            with self.subTest(fixture=fixture):
+                original = (ROOT / fixture).read_bytes()
+                with tempfile.TemporaryDirectory() as directory:
+                    root = Path(directory)
+                    subprocess.run(['git', 'init', '--quiet'], cwd=root, check=True)
+                    attributes = ROOT / '.gitattributes'
+                    if attributes.exists():
+                        (root / '.gitattributes').write_bytes(attributes.read_bytes())
+                    blob = subprocess.check_output(['git', 'hash-object', '-w', '--stdin'],
+                                                   cwd=root, input=original).decode().strip()
+                    checkout = subprocess.check_output([
+                        'git', '-c', 'core.autocrlf=true', 'cat-file', '--filters',
+                        '--path=' + fixture, blob], cwd=root)
+                    self.assertEqual(hashlib.sha256(checkout).digest(),
+                                     hashlib.sha256(original).digest())
 
     def test_python_metadata_names_legal_owner(self):
         metadata = tomllib.loads((ROOT / "pyproject.toml").read_text())
