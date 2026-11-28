@@ -21,8 +21,13 @@ class WorkflowTests(unittest.TestCase):
         self.assertIn("gh-action-pypi-publish@", workflow)
         self.assertNotIn('--skip-existing', workflow)
         self.assertNotIn('--clobber', workflow)
-        for target in ['ubuntu-24.04-arm', 'macos-15-intel', 'macos-15', 'windows-latest']:
+        for target in ['ubuntu-24.04-arm', 'macos-15', 'windows-latest']:
             self.assertIn(target, workflow)
+
+    def test_intel_macos_is_not_built(self):
+        workflow = (ROOT / '.github/workflows/ci.yml').read_text()
+        for removed in ['macos-15-intel', 'x86_64-apple-darwin']:
+            self.assertNotIn(removed, workflow)
 
 if __name__ == '__main__':
     unittest.main()
