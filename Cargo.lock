@@ -386,7 +386,7 @@ dependencies = [
 
 [[package]]
 name = "inference-engine"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "datalog-structural-model",
  "iri-rfc3987",
@@ -407,7 +407,7 @@ dependencies = [
 
 [[package]]
 name = "inference-engine-node"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "inference-engine",
  "napi",
@@ -418,7 +418,7 @@ dependencies = [
 
 [[package]]
 name = "inference-engine-python"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "inference-engine",
  "pyo3",
