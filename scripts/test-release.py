@@ -84,25 +84,6 @@ class ReleaseTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'inventory'):
                 packages.inventory(Path(directory), '0.1.0-alpha.1')
 
-    def test_intel_macos_is_not_a_release_target(self):
-        packages = load('release-packages')
-        self.assertNotIn('x86_64-apple-darwin', packages.TARGETS)
-        self.assertIn('aarch64-apple-darwin', packages.TARGETS)
-        wheels = ['manylinux_2_28_x86_64', 'manylinux_2_28_aarch64',
-                  'macosx_11_0_arm64', 'win_amd64']
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            (root / 'inference_engine-0.1.0a1.tar.gz').write_bytes(b'sdist')
-            for tag in wheels:
-                (root / f'inference_engine-0.1.0a1-cp311-abi3-{tag}.whl').write_bytes(b'w')
-            self.assertEqual(len(packages.inventory(root, '0.1.0-alpha.1')), 5)
-            (root / 'inference_engine-0.1.0a1-cp311-abi3-macosx_10_12_x86_64.whl').write_bytes(b'w')
-            with self.assertRaisesRegex(ValueError, 'inventory'):
-                packages.inventory(root, '0.1.0-alpha.1')
-
-    def test_node_loader_rejects_intel_macos(self):
-        self.assertNotIn('darwin-x64', (ROOT / 'index.cjs').read_text())
-
     def test_retry_rejects_wrong_archive_revision(self):
         packages = load('release-packages')
         with tempfile.TemporaryDirectory() as directory:

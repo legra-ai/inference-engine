@@ -66,7 +66,7 @@ console.log(compileProfile('rdfs-core').exclusions);
 
 Unsupported selectors fail; full `owl2-rl` is not an alias for a restricted profile.
 Python requires 3.11+; Node.js requires 22+. Native artifacts target Linux glibc
-x64/arm64, macOS arm64, and Windows x64. No Python or JavaScript evaluator is
+x64/arm64, macOS x64/arm64, and Windows x64. No Python or JavaScript evaluator is
 used when the native module is missing.
 
 ## Conformance evidence

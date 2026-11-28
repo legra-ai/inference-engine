@@ -20,7 +20,7 @@ maturin derives Python metadata directly from the same Cargo version.
 
 ## One tested revision
 
-`.github/workflows/ci.yml` owns preparation, validation, source packaging, four
+`.github/workflows/ci.yml` owns preparation, validation, source packaging, five
 native platform builds, tagging and all three publications. Every downstream job
 checks out the exact prepared revision. Publication requires the aggregate test
 job, which requires all platform and artifact checks. PR builds never publish.
@@ -30,7 +30,7 @@ wheels build from the source archive, then install into clean environments outsi
 the checkout. npm archives also install and test outside the checkout, without
 install scripts. Missing native modules fail; no secondary evaluator is used.
 
-Native platforms: Linux x64/arm64, macOS arm64, Windows x64. Python Linux
+Native platforms: Linux x64/arm64, macOS x64/arm64, Windows x64. Python Linux
 wheels target manylinux 2.28. npm Linux addons build on Ubuntu 24.04 and require
 its glibc baseline; musl is unsupported. Python requires 3.11+; Node requires 22+.
 Both license texts ship in the Rust archive, Python source/wheels and npm tarball.
@@ -59,7 +59,7 @@ exception to the no-main-push rule from this document.
 ## Interrupted publication
 
 The GitHub release stays draft until all registries are verified. Before publishing,
-`release-packages.zip` preserves the npm archive, Python sdist and all four wheels,
+`release-packages.zip` preserves the npm archive, Python sdist and all five wheels,
 plus semantic version, exact source revision and SHA-256 hashes. Never overwrite
 that asset. A retry downloads and validates the originals, checks published bytes,
 and selects only absent files; mismatches and authentication errors fail.

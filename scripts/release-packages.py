@@ -14,7 +14,7 @@ import zipfile
 import runpy
 
 python_version = runpy.run_path(str(Path(__file__).with_name("release-version.py")))["python_version"]
-TARGETS = ("x86_64-unknown-linux-gnu", "aarch64-unknown-linux-gnu", "aarch64-apple-darwin", "x86_64-pc-windows-msvc")
+TARGETS = ("x86_64-unknown-linux-gnu", "aarch64-unknown-linux-gnu", "x86_64-apple-darwin", "aarch64-apple-darwin", "x86_64-pc-windows-msvc")
 
 
 def digest(path, algorithm="sha256"):
@@ -87,12 +87,13 @@ def read_bundle(bundle, version, revision, output):
 
 
 def inventory(directory, version):
-    """Require one source archive and four distinct native-wheel platforms."""
+    """Require one source archive and five distinct native-wheel platforms."""
     py = python_version(version)
     wheels = sorted(directory.glob(f"inference_engine-{py}-*.whl"))
-    valid = (len(wheels) == 4
+    valid = (len(wheels) == 5
              and sum("manylinux_2_28_x86_64" in p.name for p in wheels) == 1
              and sum("manylinux_2_28_aarch64" in p.name for p in wheels) == 1
+             and sum("macosx_" in p.name and p.name.endswith("x86_64.whl") for p in wheels) == 1
              and sum("macosx_" in p.name and p.name.endswith("arm64.whl") for p in wheels) == 1
              and sum(p.name.endswith("win_amd64.whl") for p in wheels) == 1)
     source = directory / f"inference_engine-{py}.tar.gz"
