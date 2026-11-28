@@ -27,18 +27,18 @@ build = "build.rs"
 include = ["Cargo.toml", "Cargo.lock", "build.rs", "build_support.rs", "README.md", "LICENSE-APACHE", "LICENSE-MIT", "src/**/*.rs", "tests/**", "docs/rdfs-subclass.md", "docs/rdfs-source.md", "docs/rdfs-context.md", "docs/shacl12.md", "docs/rdfs-targets.md"]
 
 [dependencies]
-datalog-structural-model = "=3.0.5"
-rdf-reasoning = "=2.17.0"
-rdf-structural-model = "=0.4.0"
+datalog-structural-model = "=3.2.0"
+rdf-reasoning = "=2.17.4"
+rdf-structural-model = "=0.7.0"
 serde = { version = "1", features = ["derive"] }
-shacl-structural-model = "=6.4.7"
+shacl-structural-model = "=6.5.1"
 
 [build-dependencies]
 rhusky = "=2.0.12"
 toml = "1.2.1"
 
 [dev-dependencies]
-iri-rfc3987 = "=0.3.0"
+iri-rfc3987 = "=0.3.9"
 serde_json = "1"
 postcard = { version = "1", features = ["alloc"] }
 tokio = { version = "1.54.1", features = ["macros", "rt", "fs"] }

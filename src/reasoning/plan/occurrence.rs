@@ -49,8 +49,14 @@ impl<T: Clone + Eq + Send + Sync> OccurrenceClause<T> {
                 .await?,
             ),
         };
-        let head =
-            Pattern::compile(&rule.head, TRIPLE_RELATION, identity, &mut variables, store).await?;
+        let head = Pattern::compile(
+            rule.head.as_atom().ok_or_else(|| identity.error())?,
+            TRIPLE_RELATION,
+            identity,
+            &mut variables,
+            store,
+        )
+        .await?;
         Ok(Self { id, head, body })
     }
     pub fn bind(&self, occurrence: &TermOccurrence<T>) -> Option<Bindings<T>> {

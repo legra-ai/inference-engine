@@ -54,6 +54,7 @@ impl<T: Clone + Eq + Send + Sync> PropositionClause<T> {
     ) -> Result<Self, ReasoningError<S::Error>> {
         let rule = id.definition();
         let identity = DefinitionId::Proposition(id);
+        let head = rule.head.as_atom().ok_or_else(|| identity.error())?;
         let [
             Literal::Positive(first),
             Literal::Positive(second),
@@ -66,11 +67,11 @@ impl<T: Clone + Eq + Send + Sync> PropositionClause<T> {
             Term::TripleTerm(quoted),
             Term::Constant(predicate),
             Term::Constant(object),
-        ] = rule.head.terms.as_slice()
+        ] = head.terms.as_slice()
         else {
             return Err(identity.error());
         };
-        if rule.head.predicate.as_str() != TRIPLE_RELATION {
+        if head.predicate.as_str() != TRIPLE_RELATION {
             return Err(identity.error());
         }
         // bounded: three fixed body atoms and at most six admitted variable slots.
@@ -186,7 +187,9 @@ impl<T: Clone + Eq + Send + Sync> Clause<T> {
             _ => return Err(ReasoningError::UnsupportedRule(id)),
         };
         let head = Pattern::compile(
-            &rule.head,
+            rule.head
+                .as_atom()
+                .ok_or(ReasoningError::UnsupportedRule(id))?,
             TRIPLE_RELATION,
             DefinitionId::Rdf(id),
             &mut variables,
@@ -261,8 +264,14 @@ impl<T: Clone + Eq + Send + Sync> LiteralClause<T> {
             store,
         )
         .await?;
-        let head =
-            Pattern::compile(&rule.head, TRIPLE_RELATION, identity, &mut variables, store).await?;
+        let head = Pattern::compile(
+            rule.head.as_atom().ok_or_else(|| identity.error())?,
+            TRIPLE_RELATION,
+            identity,
+            &mut variables,
+            store,
+        )
+        .await?;
         let datatype = store
             .resolve_iri(id.datatype().iri())
             .await
@@ -298,7 +307,7 @@ impl<T: Clone + Eq + Send + Sync> ConflictClause<T> {
             Pattern::compile(second, TRIPLE_RELATION, identity, &mut variables, store).await?,
         ];
         let head = Pattern::compile(
-            &rule.head,
+            rule.head.as_atom().ok_or_else(|| identity.error())?,
             id.witness_relation(),
             identity,
             &mut variables,
