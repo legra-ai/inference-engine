@@ -126,11 +126,15 @@ impl Rdf12AxiomSeeder {
         family: AxiomFamily,
     ) -> Result<(), ReasoningError<S::Error>> {
         Self::check_cancelled(store)?;
-        let [Term::Constant(s), Term::Constant(p), Term::Constant(o)] = rule.head.terms.as_slice()
+        let head = rule
+            .head
+            .as_atom()
+            .ok_or(ReasoningError::UnsupportedAxiom)?;
+        let [Term::Constant(s), Term::Constant(p), Term::Constant(o)] = head.terms.as_slice()
         else {
             return Err(ReasoningError::UnsupportedAxiom);
         };
-        if !rule.body.is_empty() || rule.head.predicate.as_str() != TRIPLE_RELATION {
+        if !rule.body.is_empty() || head.predicate.as_str() != TRIPLE_RELATION {
             return Err(ReasoningError::UnsupportedAxiom);
         }
         let triple = [
